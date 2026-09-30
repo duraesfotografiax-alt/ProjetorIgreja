@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16181d">
+  <title>Controle do Telão</title>
+  <style>
+    :root {
+      --fundo: #16181d; --cartao: #22252d; --borda: #33373f; --texto: #f1f1f3; --suave: #a2a6b0;
+      --destaque: #4f8cff; --perigo: #e5484d; --ok: #30a46c;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.4 system-ui, sans-serif;
+      padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+    h1 { font-size: 18px; margin: 0; }
+    h2 { font-size: 15px; color: var(--suave); font-weight: 600; margin: 24px 0 10px; text-transform: uppercase; letter-spacing: .04em; }
+    #status { font-size: 13px; color: var(--suave); display: flex; align-items: center; gap: 6px; }
+    #status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--perigo); }
+    #status.on::before { background: var(--ok); }
+    button { font: inherit; color: inherit; border: 0; border-radius: 12px; cursor: pointer; }
+
+    .ao-vivo { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 12px; }
+    .previa { aspect-ratio: 16/9; background: #000; border-radius: 10px; overflow: hidden; display: grid; place-items: center; position: relative; }
+    .previa img { width: 100%; height: 100%; object-fit: contain; }
+    .previa .vazio { color: var(--suave); font-size: 14px; }
+    .previa .tag { position: absolute; top: 8px; left: 8px; background: var(--perigo); color: #fff; font-size: 12px;
+      font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+    .info { display: flex; justify-content: space-between; margin: 10px 2px; color: var(--suave); font-size: 14px; gap: 8px; }
+    .info b { color: var(--texto); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .navegar { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+    .navegar button { padding: 22px 0; font-size: 20px; font-weight: 700; background: var(--borda); }
+    .navegar .prox { background: var(--destaque); color: #fff; }
+    .extras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .extras button { padding: 12px; background: transparent; border: 1px solid var(--borda); font-size: 15px; }
+    .extras button.ativo { background: var(--perigo); border-color: var(--perigo); color: #fff; }
+    button:disabled { opacity: .4; }
+
+    .enviar { display: block; width: 100%; padding: 16px; background: var(--cartao); border: 2px dashed var(--borda);
+      border-radius: 14px; text-align: center; color: var(--texto); font-weight: 600; cursor: pointer; }
+    .enviar small { display: block; color: var(--suave); font-weight: 400; margin-top: 2px; }
+    #progresso { margin-top: 8px; font-size: 14px; color: var(--suave); min-height: 20px; }
+    #progresso.erro { color: var(--perigo); }
+
+    .lista { display: flex; flex-direction: column; gap: 10px; }
+    .item { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
+    .item.no-telao { border-color: var(--destaque); }
+    .item-topo { display: flex; align-items: center; gap: 12px; padding: 10px; width: 100%; background: none; text-align: left; }
+    .item-topo img { width: 72px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; background: #000; flex: none; }
+    .item-topo div { min-width: 0; flex: 1; }
+    .item-topo b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-topo span { color: var(--suave); font-size: 13px; }
+    .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 10px 10px; }
+    .miniaturas button { padding: 0; position: relative; border-radius: 6px; overflow: hidden; background: #000; border: 2px solid transparent; }
+    .miniaturas button.atual { border-color: var(--destaque); }
+    .miniaturas img { width: 100%; aspect-ratio: 16/9; object-fit: contain; display: block; }
+    .miniaturas span { position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #000; }
+    .apagar { display: block; margin: 0 10px 10px auto; padding: 8px 12px; background: none; color: var(--perigo); font-size: 14px; }
+    .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Controle do Telão</h1>
+    <span id="status">Conectando…</span>
+  </header>
+
+  <section class="ao-vivo">
+    <div class="previa" id="previa"><span class="vazio">Nada no telão</span></div>
+    <div class="info"><b id="titulo">—</b><span id="contador"></span></div>
+    <div class="navegar">
+      <button id="anterior" aria-label="Slide anterior">◀</button>
+      <button id="proximo" class="prox" aria-label="Próximo slide">Próximo ▶</button>
+    </div>
+    <div class="extras">
+      <button id="preta">Tela preta</button>
+      <button id="fechar">Tirar do telão</button>
+    </div>
+  </section>
+
+  <h2>Enviar arquivo</h2>
+  <label class="enviar">
+    📄 Escolher PDF ou imagens
+    <small>O PDF vira slides automaticamente, na ordem</small>
+    <input id="arquivo" type="file" accept="application/pdf,image/*" multiple hidden>
+  </label>
+  <div id="progresso"></div>
+
+  <h2>Apresentações</h2>
+  <div class="lista" id="lista"></div>
+
+  <script type="module">
+    import { conectar, urlSlide } from '/conexao.js';
+
+    const $ = (id) => document.getElementById(id);
+    let estado = null;
+    let apresentacoes = [];
+    let aberta = null; // apresentação com miniaturas expandidas
+
+    const enviar = conectar({
+      aoReceberEstado(novoEstado, novasApresentacoes) {
+        estado = novoEstado;
+        apresentacoes = novasApresentacoes;
+        if (estado.atual && aberta === null) aberta = estado.atual.id;
+        desenhar();
+      },
+      aoMudarConexao(on) {
+        $('status').classList.toggle('on', on);
+        $('status').textContent = on ? 'Conectado' : 'Sem conexão';
+      },
+    });
+
+    $('anterior').onclick = () => enviar({ acao: 'anterior' });
+    $('proximo').onclick = () => enviar({ acao: 'proximo' });
+    $('preta').onclick = () => enviar({ acao: 'telaPreta', ligada: !estado?.telaPreta });
+    $('fechar').onclick = () => enviar({ acao: 'fechar' });
+
+    function desenhar() {
+      const ap = estado.atual && apresentacoes.find((a) => a.id === estado.atual.id);
+      const previa = $('previa');
+      previa.innerHTML = ap
+        ? `<img src="${urlSlide(ap, estado.atual.slide)}" alt="">`
+        : '<span class="vazio">Nada no telão</span>';
+      if (estado.telaPreta) previa.insertAdjacentHTML('beforeend', '<span class="tag">TELA PRETA</span>');
+      $('titulo').textContent = ap ? ap.nome : '—';
+      $('contador').textContent = ap ? `${estado.atual.slide + 1} de ${ap.slides.length}` : '';
+      $('anterior').disabled = !ap || estado.atual.slide === 0;
+      $('proximo').disabled = !ap || estado.atual.slide === ap.slides.length - 1;
+      $('fechar').disabled = !ap;
+      $('preta').classList.toggle('ativo', estado.telaPreta);
+      $('preta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
+      desenharLista();
+    }
+
+    function desenharLista() {
+      const lista = $('lista');
+      lista.replaceChildren();
+      if (apresentacoes.length === 0) {
+        lista.innerHTML = '<div class="nada">Nenhuma apresentação ainda. Envie um PDF acima.</div>';
+        return;
+      }
+      for (const ap of apresentacoes) {
+        const noTelao = estado.atual?.id === ap.id;
+        const item = document.createElement('div');
+        item.className = 'item' + (noTelao ? ' no-telao' : '');
+
+        const topo = document.createElement('button');
+        topo.className = 'item-topo';
+        topo.innerHTML = `<img src="${urlSlide(ap, 0)}" alt="" loading="lazy"><div><b></b><span></span></div>`;
+        topo.querySelector('b').textContent = ap.nome;
+        topo.querySelector('span').textContent =
+          `${ap.slides.length} slide${ap.slides.length > 1 ? 's' : ''}${noTelao ? ' · no telão' : ''}`;
+        topo.onclick = () => { aberta = aberta === ap.id ? '' : ap.id; desenharLista(); };
+        item.append(topo);
+
+        if (aberta === ap.id) {
+          const grade = document.createElement('div');
+          grade.className = 'miniaturas';
+          ap.slides.forEach((_, i) => {
+            const b = document.createElement('button');
+            if (noTelao && estado.atual.slide === i) b.className = 'atual';
+            b.innerHTML = `<img src="${urlSlide(ap, i)}" alt="Slide ${i + 1}" loading="lazy"><span>${i + 1}</span>`;
+            b.onclick = () => enviar({ acao: 'abrir', id: ap.id, slide: i });
+            grade.append(b);
+          });
+          item.append(grade);
+
+          const apagar = document.createElement('button');
+          apagar.className = 'apagar';
+          apagar.textContent = 'Apagar apresentação';
+          apagar.onclick = async () => {
+            if (!confirm(`Apagar "${ap.nome}"?`)) return;
+            await fetch(`/api/apresentacoes/${ap.id}`, { method: 'DELETE' });
+          };
+          item.append(apagar);
+        }
+        lista.append(item);
+      }
+    }
+
+    // Envio com barra de progresso. Depois do envio, o computador converte o PDF.
+    $('arquivo').onchange = (e) => {
+      const arquivos = [...e.target.files];
+      e.target.value = '';
+      if (arquivos.length === 0) return;
+      const progresso = $('progresso');
+      progresso.className = '';
+
+      const dados = new FormData();
+      arquivos.forEach((a) => dados.append('arquivos', a));
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/enviar');
+      xhr.upload.onprogress = (ev) => {
+        if (!ev.lengthComputable) return;
+        const pct = Math.round((ev.loaded / ev.total) * 100);
+        progresso.textContent = pct < 100 ? `Enviando… ${pct}%` : 'Preparando os slides…';
+      };
+      xhr.onload = () => {
+        let resposta = {};
+        try { resposta = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 200) {
+          const total = resposta.criadas.reduce((s, a) => s + a.slides.length, 0);
+          progresso.textContent = `Pronto! ${total} slide${total > 1 ? 's' : ''} adicionado${total > 1 ? 's' : ''}.`;
+          aberta = resposta.criadas[0]?.id ?? aberta;
+          desenharLista();
+        } else {
+          progresso.className = 'erro';
+          progresso.textContent = resposta.erro || 'Não foi possível enviar.';
+        }
+      };
+      xhr.onerror = () => { progresso.className = 'erro'; progresso.textContent = 'Falha na conexão com o computador.'; };
+      progresso.textContent = 'Enviando…';
+      xhr.send(dados);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telão</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+    .camada {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      object-fit: contain; opacity: 0; transition: opacity .35s ease;
+    }
+    .camada.visivel { opacity: 1; }
+    #preta { position: fixed; inset: 0; background: #000; opacity: 0; transition: opacity .35s; pointer-events: none; }
+    #preta.ligada { opacity: 1; }
+    #inicio {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 24px; color: #eee; font: 500 28px/1.3 system-ui, sans-serif; text-align: center; cursor: default;
+    }
+    #inicio[hidden] { display: none; }
+    #inicio img { width: min(40vh, 400px); border-radius: 12px; background: #fff; padding: 8px; }
+    #inicio small { color: #999; font-size: 20px; }
+    #aviso { position: fixed; bottom: 16px; left: 0; right: 0; color: #888; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <img id="a" class="camada" alt="">
+  <img id="b" class="camada" alt="">
+  <div id="preta"></div>
+
+  <div id="inicio">
+    <div>Aponte a câmera do celular para controlar o telão</div>
+    <img id="qrcode" alt="QR code para conectar o celular">
+    <small id="url"></small>
+    <div id="aviso">Clique aqui ou aperte F11 para tela cheia</div>
+  </div>
+
+  <script type="module">
+    import { conectar, urlSlide } from '/conexao.js';
+
+    const camadas = [document.getElementById('a'), document.getElementById('b')];
+    let frente = 0;
+    let srcAtual = null;
+    let ultimo = { estado: null, apresentacoes: [] };
+
+    fetch('/api/conexao').then((r) => r.json()).then(({ url, qrcode }) => {
+      document.getElementById('qrcode').src = qrcode;
+      document.getElementById('url').textContent = url;
+    });
+
+    // Troca de slide com transição suave: carrega por trás e depois mostra.
+    function mostrar(src) {
+      if (src === srcAtual) return;
+      srcAtual = src;
+      if (!src) { camadas.forEach((c) => c.classList.remove('visivel')); return; }
+      const tras = camadas[1 - frente];
+      tras.onload = () => {
+        if (srcAtual !== src) return;
+        tras.classList.add('visivel');
+        camadas[frente].classList.remove('visivel');
+        frente = 1 - frente;
+      };
+      tras.src = src;
+    }
+
+    function preCarregar(ap, indice) {
+      if (ap && indice < ap.slides.length) new Image().src = urlSlide(ap, indice);
+    }
+
+    const enviar = conectar({
+      aoReceberEstado(estado, apresentacoes) {
+        ultimo = { estado, apresentacoes };
+        const ap = estado.atual && apresentacoes.find((a) => a.id === estado.atual.id);
+        document.getElementById('inicio').hidden = Boolean(ap);
+        document.getElementById('preta').classList.toggle('ligada', estado.telaPreta);
+        mostrar(ap ? urlSlide(ap, estado.atual.slide) : null);
+        if (ap) preCarregar(ap, estado.atual.slide + 1);
+      },
+    });
+
+    // Teclado do computador também funciona (setas, espaço, B para tela preta).
+    document.addEventListener('keydown', (e) => {
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) enviar({ acao: 'proximo' });
+      if (['ArrowLeft', 'PageUp'].includes(e.key)) enviar({ acao: 'anterior' });
+      if (e.key.toLowerCase() === 'b') enviar({ acao: 'telaPreta', ligada: !ultimo.estado?.telaPreta });
+    });
+
+    const aviso = document.getElementById('aviso');
+    aviso.onclick = () => document.documentElement.requestFullscreen?.();
+    document.addEventListener('fullscreenchange', () => { aviso.hidden = Boolean(document.fullscreenElement); });
+  </script>
+</body>
+</html>
