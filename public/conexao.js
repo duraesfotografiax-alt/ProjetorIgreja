@@ -13,7 +13,7 @@ export function conectar({ aoReceberEstado, aoMudarConexao }) {
     };
     socket.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      if (msg.tipo === 'estado') aoReceberEstado(msg.estado, msg.apresentacoes);
+      if (msg.tipo === 'estado') aoReceberEstado(msg.estado, msg.itens);
     };
     socket.onclose = () => {
       aoMudarConexao?.(false);
@@ -29,6 +29,10 @@ export function conectar({ aoReceberEstado, aoMudarConexao }) {
   };
 }
 
-export function urlSlide(apresentacao, indice) {
-  return `/midia/${apresentacao.id}/${apresentacao.slides[indice]}`;
+export function urlSlide(item, indice) {
+  return `/midia/${item.id}/${item.slides[indice]}`;
+}
+
+export function urlVideo(item) {
+  return `/midia/${item.id}/${item.arquivo}`;
 }

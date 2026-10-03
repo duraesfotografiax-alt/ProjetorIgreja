@@ -30,15 +30,15 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
 
   try {
     const inicial = await esperarEstado(socket, () => true);
-    assert.equal(inicial.apresentacoes.length, 0);
+    assert.equal(inicial.itens.length, 0);
 
     // Envio de PDF com nome acentuado
     const form = new FormData();
     form.append('arquivos', new Blob([criarPdf(['Um', 'Dois'])], { type: 'application/pdf' }), 'Culto de Domingo – Louvor.pdf');
-    const avisado = esperarEstado(socket, (m) => m.apresentacoes.length === 1);
+    const avisado = esperarEstado(socket, (m) => m.itens.length === 1);
     const resposta = await fetch(`${base}/api/enviar`, { method: 'POST', body: form });
     assert.equal(resposta.status, 200);
-    const { criadas: [ap] } = await resposta.json();
+    const { criados: [ap] } = await resposta.json();
     assert.equal(ap.nome, 'Culto de Domingo – Louvor');
     assert.deepEqual(ap.slides, ['001.jpg', '002.jpg']);
     await avisado;
@@ -61,13 +61,54 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     assert.match((await recusa.json()).erro, /PDF/);
 
     // Apagar tira do telão
-    const limpo = esperarEstado(socket, (m) => m.apresentacoes.length === 0 && m.estado.atual === null);
-    await fetch(`${base}/api/apresentacoes/${ap.id}`, { method: 'DELETE' });
+    const limpo = esperarEstado(socket, (m) => m.itens.length === 0 && m.estado.atual === null);
+    await fetch(`${base}/api/itens/${ap.id}`, { method: 'DELETE' });
     await limpo;
 
     // QR code de conexão
     const conexao = await (await fetch(`${base}/api/conexao`)).json();
     assert.match(conexao.qrcode, /^data:image\/png;base64,/);
+  } finally {
+    socket.close();
+    servidor.close();
+    await rm(pasta, { recursive: true, force: true });
+  }
+});
+
+test('cadastra música, monta a lista do culto e ela continua salva ao reiniciar', async () => {
+  const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
+  const opcoes = { pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0 };
+  let servidor = await criarServidor(opcoes);
+  let base = `http://localhost:${servidor.address().port}`;
+  let socket = new WebSocket(`${base.replace('http', 'ws')}/ws`);
+
+  try {
+    await esperarEstado(socket, () => true);
+    const resposta = await fetch(`${base}/api/musicas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: 'Aleluia', letra: 'Aleluia\n\nAmém' }),
+    });
+    assert.equal(resposta.status, 200);
+    const { musica } = await resposta.json();
+    assert.deepEqual(musica.estrofes, ['Aleluia', 'Amém']);
+
+    const semLetra = await fetch(`${base}/api/musicas`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: 'X' }),
+    });
+    assert.equal(semLetra.status, 400);
+
+    socket.send(JSON.stringify({ acao: 'culto', itens: [musica.id] }));
+    await esperarEstado(socket, (m) => m.estado.culto.length === 1);
+
+    // Reinicia o programa: a lista do culto continua lá
+    socket.close();
+    await new Promise((r) => servidor.close(r));
+    servidor = await criarServidor(opcoes);
+    base = `http://localhost:${servidor.address().port}`;
+    socket = new WebSocket(`${base.replace('http', 'ws')}/ws`);
+    const depois = await esperarEstado(socket, () => true);
+    assert.deepEqual(depois.estado.culto, [musica.id]);
   } finally {
     socket.close();
     servidor.close();

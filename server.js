@@ -3,12 +3,31 @@ import path from 'node:path';
 import { criarServidor, enderecoNaRede, PASTA_RAIZ } from './src/servidor.js';
 
 const porta = Number(process.env.PORTA) || 8080;
+const abrirNavegador = process.argv.includes('--abrir');
 
-const servidor = await criarServidor({
-  pastaBiblioteca: path.join(PASTA_RAIZ, 'biblioteca'),
-  pastaPublica: path.join(PASTA_RAIZ, 'public'),
-  porta,
-});
+// Com --abrir, já abre o telão no navegador padrão (usado pelos atalhos iniciar-*).
+function abrirTelao() {
+  const url = `http://localhost:${porta}/telao.html`;
+  const [cmd, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
+    : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+  spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+}
+
+let servidor;
+try {
+  servidor = await criarServidor({
+    pastaBiblioteca: path.join(PASTA_RAIZ, 'biblioteca'),
+    pastaPublica: path.join(PASTA_RAIZ, 'public'),
+    porta,
+  });
+} catch (erro) {
+  if (erro.code !== 'EADDRINUSE') throw erro;
+  console.log('');
+  console.log('  O Projetor Igreja já está aberto em outra janela.');
+  console.log(`  Telão: http://localhost:${porta}/telao.html`);
+  if (abrirNavegador) abrirTelao();
+  process.exit(0);
+}
 
 const endereco = `http://${enderecoNaRede()}:${servidor.address().port}`;
 console.log('');
@@ -19,10 +38,4 @@ console.log(`  Celular (mesmo Wi-Fi):         ${endereco}`);
 console.log('');
 console.log('  Para desligar, feche esta janela.');
 
-// Com --abrir, já abre o telão no navegador padrão (usado pelos atalhos iniciar-*).
-if (process.argv.includes('--abrir')) {
-  const url = `http://localhost:${porta}/telao.html`;
-  const [cmd, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
-    : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
-  spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
-}
+if (abrirNavegador) abrirTelao();
