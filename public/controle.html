@@ -92,6 +92,22 @@
     .acoes button { padding: 8px 12px; border: 1px solid var(--borda); font-size: 14px; }
     .acoes .perigo { color: var(--perigo); }
     .acoes .feito { color: var(--ok); }
+    /* Dias da semana */
+    .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .dias button { padding: 8px 0; border: 1px solid var(--borda); border-radius: 9px; font-size: 13px; font-weight: 600;
+      color: var(--suave); position: relative; }
+    .dias button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
+    .dias button.hoje::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--ok); }
+    .titulo-dia { display: flex; align-items: center; justify-content: space-between; margin: 12px 2px 10px; }
+    .titulo-dia b { font-size: 17px; }
+    .titulo-dia small { color: var(--ok); font-weight: 600; margin-left: 6px; }
+    .titulo-dia button { padding: 6px 10px; border: 1px solid var(--borda); font-size: 13px; color: var(--suave); }
+    .em-dias { margin-top: 10px; }
+    .em-dias > span { display: block; font-size: 13px; color: var(--suave); margin-bottom: 6px; }
+    .colocar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; color: var(--suave); }
+    .colocar select { flex: 1; font: inherit; color: var(--texto); background: var(--cartao); border: 1px solid var(--borda);
+      border-radius: 10px; padding: 8px; }
     .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
 
     /* Editor de música */
@@ -140,6 +156,9 @@
   </nav>
 
   <section class="painel" id="aba-culto">
+    <div class="dias" id="diasCulto"></div>
+    <div class="titulo-dia"><span><b id="nomeDia"></b><small id="marcaHoje">hoje</small></span>
+      <button id="limparDia">Limpar dia</button></div>
     <div class="lista" id="listaCulto"></div>
   </section>
 
@@ -152,6 +171,7 @@
   </section>
 
   <section class="painel" id="aba-arquivos" hidden>
+    <label class="colocar">Colocar em: <select id="diaEnvio"></select></label>
     <label class="enviar">
       📄 Enviar PDF, imagens ou vídeo
       <small>O PDF vira slides automaticamente, na ordem</small>
@@ -184,6 +204,12 @@
 
     const $ = (id) => document.getElementById(id);
     const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬' };
+    const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+    const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+    const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira',
+      sex: 'Sexta-feira', sab: 'Sábado', dom: 'Domingo' };
+    let diaVisto = null;   // dia mostrado na aba Culto (começa no dia de hoje)
+    let hojeVisto = null;
     let estado = null;
     let itens = [];
     const abertos = new Set(); // itens com as partes expandidas, por aba
@@ -193,6 +219,9 @@
       aoReceberEstado(novoEstado, novosItens) {
         estado = novoEstado;
         itens = novosItens;
+        // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
+        if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
+        hojeVisto = estado.hoje;
         desenhar();
       },
       aoMudarConexao(on) {
@@ -206,7 +235,9 @@
     const descricao = (item) => item.tipo === 'musica'
       ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
       : item.tipo === 'video' ? 'Vídeo' : `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`;
-    const definirCulto = (lista) => enviar({ acao: 'culto', itens: lista });
+    const descricaoComDias = (item) => [descricao(item), diasDoItem(item).map((d) => ABREV[d]).join(', ')].filter(Boolean).join(' · ');
+    const definirCulto = (dia, lista) => enviar({ acao: 'culto', dia, itens: lista });
+    const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
 
     // ---------- Ao vivo ----------
     $('anterior').onclick = () => enviar({ acao: 'anterior' });
@@ -238,9 +269,10 @@
       }
       if (estado.telaPreta) previa.insertAdjacentHTML('beforeend', '<span class="tag">TELA PRETA</span>');
 
-      // Na lista do culto, o "Próximo" no fim de um item passa para o seguinte.
-      const pos = item ? estado.culto.indexOf(item.id) : -1;
-      const temVizinho = (passo) => pos >= 0 && Boolean(buscar(estado.culto[pos + passo]));
+      // Na lista do dia, o "Próximo" no fim de um item passa para o seguinte.
+      const lista = estado.atual?.dia ? estado.cultos[estado.atual.dia] : [];
+      const pos = item ? lista.indexOf(item.id) : -1;
+      const temVizinho = (passo) => pos >= 0 && Boolean(buscar(lista[pos + passo]));
       $('titulo').textContent = item ? item.nome : '—';
       $('contador').textContent = item && item.tipo !== 'video' ? `${slide + 1} de ${partes(item)}` : '';
       $('anterior').disabled = !item || (slide === 0 && !temVizinho(-1));
@@ -278,23 +310,26 @@
         : Object.assign(document.createElement('span'), { className: 'capa', textContent: ICONES[item.tipo] });
       const texto = document.createElement('div');
       texto.append(Object.assign(document.createElement('b'), { textContent: item.nome }),
-        Object.assign(document.createElement('span'), { textContent: descricao(item) + (noTelao ? ' · no telão' : '') }));
+        Object.assign(document.createElement('span'), {
+          textContent: (aba === 'culto' ? descricao(item) : descricaoComDias(item)) + (noTelao ? ' · no telão' : ''),
+        }));
       abrir.append(capa, texto);
       abrir.onclick = () => { abertos.has(chave) ? abertos.delete(chave) : abertos.add(chave); desenharListas(); };
       topo.append(abrir);
 
       if (posicao !== undefined) {
-        // Botões para reordenar ou tirar da lista do culto
+        // Botões para reordenar ou tirar da lista do dia
+        const doDia = estado.cultos[diaVisto];
         const mover = (passo) => {
-          const lista = [...estado.culto];
+          const lista = [...doDia];
           const [id] = lista.splice(posicao, 1);
           lista.splice(posicao + passo, 0, id);
-          definirCulto(lista);
+          definirCulto(diaVisto, lista);
         };
         topo.append(
           botaoMini('↑', 'Subir', posicao === 0, () => mover(-1)),
-          botaoMini('↓', 'Descer', posicao === estado.culto.length - 1, () => mover(1)),
-          botaoMini('✕', 'Tirar do culto', false, () => definirCulto(estado.culto.filter((id) => id !== item.id))),
+          botaoMini('↓', 'Descer', posicao === doDia.length - 1, () => mover(1)),
+          botaoMini('✕', 'Tirar deste dia', false, () => definirCulto(diaVisto, doDia.filter((id) => id !== item.id))),
         );
       }
       el.append(topo);
@@ -314,6 +349,7 @@
       const caixa = document.createElement('div');
       caixa.className = 'partes';
       const atual = (i) => noTelao && estado.atual.slide === i ? 'atual' : '';
+      const dia = aba === 'culto' ? diaVisto : undefined; // abrir pela lista do dia segue a ordem dela
 
       if (item.tipo === 'slides') {
         const grade = document.createElement('div');
@@ -321,7 +357,7 @@
         item.slides.forEach((_, i) => {
           const b = Object.assign(document.createElement('button'), { className: atual(i) });
           b.innerHTML = `<img src="${urlSlide(item, i)}" alt="Slide ${i + 1}" loading="lazy"><span>${i + 1}</span>`;
-          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i });
+          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
           grade.append(b);
         });
         caixa.append(grade);
@@ -330,7 +366,7 @@
         lista.className = 'estrofes';
         item.estrofes.forEach((estrofe, i) => {
           const b = Object.assign(document.createElement('button'), { className: atual(i), textContent: estrofe });
-          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i });
+          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
           lista.append(b);
         });
         caixa.append(lista);
@@ -338,19 +374,13 @@
         const b = Object.assign(document.createElement('button'), {
           className: 'tocar-video ' + atual(0), textContent: noTelao ? '🎬 No telão' : '▶ Mostrar vídeo no telão',
         });
-        b.onclick = () => enviar({ acao: 'abrir', id: item.id });
+        b.onclick = () => enviar({ acao: 'abrir', id: item.id, dia });
         caixa.append(b);
       }
 
       if (aba !== 'culto') {
         const acoes = document.createElement('div');
         acoes.className = 'acoes';
-        const noCulto = estado.culto.includes(item.id);
-        const culto = Object.assign(document.createElement('button'), {
-          className: noCulto ? 'feito' : '', textContent: noCulto ? '✓ No culto' : '+ Culto',
-        });
-        culto.onclick = () => definirCulto(noCulto ? estado.culto.filter((id) => id !== item.id) : [...estado.culto, item.id]);
-        acoes.append(culto);
         if (item.tipo === 'musica') {
           const editar = Object.assign(document.createElement('button'), { textContent: 'Editar' });
           editar.onclick = () => abrirEditor(item);
@@ -361,10 +391,59 @@
           if (confirm(`Apagar "${item.nome}"?`)) await fetch(`/api/itens/${item.id}`, { method: 'DELETE' });
         };
         acoes.append(apagar);
-        caixa.append(acoes);
+        caixa.append(escolherDias(item), acoes);
       }
       return caixa;
     }
+
+    // Botões Seg..Dom: liga e desliga o item na lista de cada dia.
+    function escolherDias(item) {
+      const caixa = document.createElement('div');
+      caixa.className = 'em-dias';
+      caixa.append(Object.assign(document.createElement('span'), { textContent: 'Mostrar nos dias:' }));
+      const linha = document.createElement('div');
+      linha.className = 'dias';
+      for (const d of DIAS) {
+        const lista = estado.cultos[d];
+        const marcado = lista.includes(item.id);
+        const b = Object.assign(document.createElement('button'), {
+          textContent: ABREV[d], className: (marcado ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''),
+        });
+        b.setAttribute('aria-pressed', marcado);
+        b.onclick = () => definirCulto(d, marcado ? lista.filter((id) => id !== item.id) : [...lista, item.id]);
+        linha.append(b);
+      }
+      caixa.append(linha);
+      return caixa;
+    }
+
+    function desenharDias() {
+      const linha = $('diasCulto');
+      linha.replaceChildren(...DIAS.map((d) => {
+        const b = Object.assign(document.createElement('button'), {
+          textContent: ABREV[d], className: (d === diaVisto ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''),
+        });
+        b.onclick = () => { diaVisto = d; desenharListas(); };
+        return b;
+      }));
+      $('nomeDia').textContent = NOME_DIA[diaVisto];
+      $('marcaHoje').hidden = diaVisto !== estado.hoje;
+      $('limparDia').disabled = estado.cultos[diaVisto].length === 0;
+
+      // "Colocar em" do envio acompanha o dia escolhido na aba Culto.
+      const select = $('diaEnvio');
+      if (select.options.length === 0) {
+        for (const d of DIAS) select.add(new Option(NOME_DIA[d], d));
+        select.add(new Option('Só guardar (nenhum dia)', ''));
+      }
+      if (select.dataset.dia !== diaVisto) { select.value = diaVisto; select.dataset.dia = diaVisto; }
+    }
+
+    $('limparDia').onclick = () => {
+      if (confirm(`Tirar todos os itens da lista de ${NOME_DIA[diaVisto]}? Os arquivos continuam guardados.`)) {
+        definirCulto(diaVisto, []);
+      }
+    };
 
     function preencher(lista, elementos, vazio) {
       lista.replaceChildren(...elementos);
@@ -372,9 +451,10 @@
     }
 
     function desenharListas() {
-      const culto = estado.culto.map(buscar).filter(Boolean);
+      desenharDias();
+      const culto = estado.cultos[diaVisto].map(buscar).filter(Boolean);
       preencher($('listaCulto'), culto.map((item, i) => cartao(item, 'culto', { posicao: i })),
-        'A lista do culto está vazia. Nas abas Músicas e Arquivos, abra um item e toque em “+ Culto”.');
+        `Nada na lista de ${NOME_DIA[diaVisto]}. Envie arquivos na aba Arquivos ou, nas abas Músicas e Arquivos, abra um item e marque o dia.`);
 
       const termo = normalizar($('busca').value);
       const musicas = itens.filter((i) => i.tipo === 'musica')
@@ -432,6 +512,8 @@
       progresso.className = '';
 
       const dados = new FormData();
+      const dia = $('diaEnvio').value;
+      dados.append('dia', dia);
       arquivos.forEach((a) => dados.append('arquivos', a));
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/enviar');
@@ -445,7 +527,8 @@
         try { resposta = JSON.parse(xhr.responseText); } catch {}
         if (xhr.status === 200) {
           const n = resposta.criados.length;
-          progresso.textContent = `Pronto! ${n} ${n > 1 ? 'itens adicionados' : 'item adicionado'}.`;
+          progresso.textContent = `Pronto! ${n} ${n > 1 ? 'itens adicionados' : 'item adicionado'}` +
+            (dia ? ` na lista de ${NOME_DIA[dia]}.` : '.');
           resposta.criados.forEach((c) => abertos.add(`arquivos:${c.id}`));
           desenharListas();
         } else {

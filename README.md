@@ -5,7 +5,7 @@ Mostra slides, letras de música e vídeos no telão da igreja, tudo controlado 
 - **Envie o PDF pelo celular.** Ele vira slides automaticamente, na ordem certa. Não precisa converter para JPEG nem numerar nada.
 - **Músicas:** cadastre a letra pelo celular (pode colar). Cada estrofe vira uma tela, com letra grande e legível. Tem busca por nome ou trecho da letra.
 - **Vídeos:** envie pelo celular. Tocar, pausar, voltar ao início e volume, tudo pelo celular.
-- **Lista do culto:** monte a ordem do culto (músicas, avisos, vídeos). O botão **Próximo** passa de um item para o outro sozinho.
+- **Uma lista para cada dia (segunda a domingo):** o programa abre direto na lista de hoje. O mesmo item pode estar em vários dias (por exemplo, a chamada de segunda no domingo e na segunda), e o botão **Próximo** passa de um item para o outro sozinho.
 - **Controle pelo celular:** próximo, anterior, escolher o slide ou a estrofe, tela preta.
 - **Conexão por QR code:** o telão mostra um QR code. É só apontar a câmera do celular. Não precisa instalar aplicativo.
 - Também aceita imagens (JPG, PNG). Várias imagens enviadas juntas viram uma apresentação, na ordem do nome.
@@ -33,9 +33,9 @@ O celular precisa estar **no mesmo Wi-Fi** que o computador. Aponte a câmera pa
 
 O controle no celular tem três abas:
 
-- **Arquivos:** envie PDF, imagens ou vídeo (pode ser o que chegou no WhatsApp). Toque no item para escolher o slide ou mostrar o vídeo.
-- **Músicas:** toque em **+ Nova**, escreva o nome e cole a letra. Deixe **uma linha em branco entre as estrofes**: cada estrofe vira uma tela. Toque numa estrofe para mostrar no telão.
-- **Culto:** a ordem do culto. Nas outras abas, abra um item e toque em **+ Culto**. Aqui você reordena com ↑ ↓ e tira com ✕.
+- **Culto:** escolha o dia (Seg, Ter, … Dom; o pontinho verde marca hoje) e veja a ordem daquele dia. Reordene com ↑ ↓, tire com ✕ ou use **Limpar dia** (os arquivos continuam guardados).
+- **Arquivos:** escolha em **Colocar em** o dia e envie PDF, imagens ou vídeo (pode ser o que chegou no WhatsApp). Eles já entram na lista daquele dia. Toque num item para escolher o slide e, em **Mostrar nos dias**, ligue ou desligue os dias em que ele aparece.
+- **Músicas:** toque em **+ Nova**, escreva o nome e cole a letra. Deixe **uma linha em branco entre as estrofes**: cada estrofe vira uma tela. Para colocar a música num dia, abra a música e marque o dia em **Mostrar nos dias**.
 
 Na parte de cima ficam sempre **Próximo** e **◀**, **Tela preta** e **Tirar do telão**. Quando um vídeo está no telão, aparecem os botões do vídeo e o volume.
 
@@ -45,7 +45,7 @@ No computador, as setas do teclado também passam os slides, e a tecla **B** lig
 
 ## Onde ficam os arquivos
 
-Tudo fica na pasta `biblioteca/`, um subdiretório por item. Os slides ficam numerados (`001.jpg`, `002.jpg`, …), e as músicas e os vídeos ficam em suas próprias pastas. A lista do culto fica salva em `biblioteca/culto.json` e continua lá quando você fecha e abre o programa.
+Tudo fica na pasta `biblioteca/`, um subdiretório por item. Os slides ficam numerados (`001.jpg`, `002.jpg`, …), e as músicas e os vídeos ficam em suas próprias pastas. As listas de cada dia ficam salvas em `biblioteca/cultos.json` e continuam lá quando você fecha e abre o programa.
 
 ## Segurança
 

@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { criarServidor, PASTA_RAIZ } from '../src/servidor.js';
+import { diaDaSemana } from '../src/estado.js';
 import { criarPdf } from './util.js';
 
 // Recebe mensagens do WebSocket até uma delas satisfazer a condição.
@@ -34,6 +35,7 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
 
     // Envio de PDF com nome acentuado
     const form = new FormData();
+    form.append('dia', 'dom');
     form.append('arquivos', new Blob([criarPdf(['Um', 'Dois'])], { type: 'application/pdf' }), 'Culto de Domingo – Louvor.pdf');
     const avisado = esperarEstado(socket, (m) => m.itens.length === 1);
     const resposta = await fetch(`${base}/api/enviar`, { method: 'POST', body: form });
@@ -41,7 +43,7 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     const { criados: [ap] } = await resposta.json();
     assert.equal(ap.nome, 'Culto de Domingo – Louvor');
     assert.deepEqual(ap.slides, ['001.jpg', '002.jpg']);
-    await avisado;
+    assert.deepEqual((await avisado).estado.cultos.dom, [ap.id]); // já entrou na lista de domingo
 
     // A imagem do slide é servida
     const img = await fetch(`${base}/midia/${ap.id}/002.jpg`);
@@ -75,7 +77,7 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
   }
 });
 
-test('cadastra música, monta a lista do culto e ela continua salva ao reiniciar', async () => {
+test('cadastra música, monta a lista do dia e ela continua salva ao reiniciar', async () => {
   const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
   const opcoes = { pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0 };
   let servidor = await criarServidor(opcoes);
@@ -98,8 +100,8 @@ test('cadastra música, monta a lista do culto e ela continua salva ao reiniciar
     });
     assert.equal(semLetra.status, 400);
 
-    socket.send(JSON.stringify({ acao: 'culto', itens: [musica.id] }));
-    await esperarEstado(socket, (m) => m.estado.culto.length === 1);
+    socket.send(JSON.stringify({ acao: 'culto', dia: 'qua', itens: [musica.id] }));
+    await esperarEstado(socket, (m) => m.estado.cultos.qua.length === 1);
 
     // Reinicia o programa: a lista do culto continua lá
     socket.close();
@@ -108,7 +110,27 @@ test('cadastra música, monta a lista do culto e ela continua salva ao reiniciar
     base = `http://localhost:${servidor.address().port}`;
     socket = new WebSocket(`${base.replace('http', 'ws')}/ws`);
     const depois = await esperarEstado(socket, () => true);
-    assert.deepEqual(depois.estado.culto, [musica.id]);
+    assert.deepEqual(depois.estado.cultos.qua, [musica.id]);
+    assert.equal(depois.estado.hoje, diaDaSemana());
+  } finally {
+    socket.close();
+    servidor.close();
+    await rm(pasta, { recursive: true, force: true });
+  }
+});
+
+test('a lista única da versão anterior vira a lista de hoje', async () => {
+  const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
+  const id = 'antigo';
+  await mkdir(path.join(pasta, id));
+  await writeFile(path.join(pasta, id, 'info.json'),
+    JSON.stringify({ id, tipo: 'musica', nome: 'A', criadaEm: '2026-01-01', estrofes: ['a'], letra: 'a' }));
+  await writeFile(path.join(pasta, 'culto.json'), JSON.stringify([id]));
+  const servidor = await criarServidor({ pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0 });
+  const socket = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
+  try {
+    const { estado } = await esperarEstado(socket, () => true);
+    assert.deepEqual(estado.cultos[diaDaSemana()], [id]);
   } finally {
     socket.close();
     servidor.close();

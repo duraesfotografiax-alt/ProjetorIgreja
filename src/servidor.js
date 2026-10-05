@@ -8,7 +8,7 @@ import multer from 'multer';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { Biblioteca } from './biblioteca.js';
-import { estadoInicial, aplicarComando, ajustarAposRemocao } from './estado.js';
+import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
 
@@ -24,9 +24,9 @@ export function enderecoNaRede() {
 
 export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
-  const arquivoCulto = path.join(pastaBiblioteca, 'culto.json');
+  const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
   let itens = await biblioteca.listar();
-  let estado = ajustarAposRemocao(estadoInicial(await lerCulto(arquivoCulto)), itens);
+  let estado = ajustarAposRemocao(estadoInicial(await lerCultos(pastaBiblioteca)), itens);
 
   const app = express();
   const servidor = http.createServer(app);
@@ -45,7 +45,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
   };
   const mudarEstado = (novo) => {
     if (novo === estado) return;
-    if (novo.culto !== estado.culto) writeFile(arquivoCulto, JSON.stringify(novo.culto)).catch(() => {});
+    if (novo.cultos !== estado.cultos) writeFile(arquivoCultos, JSON.stringify(novo.cultos, null, 2)).catch(() => {});
     estado = novo;
     transmitir();
   };
@@ -55,6 +55,14 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
     if (novo !== estado) mudarEstado(novo);
     else transmitir();
   };
+
+  // Quando vira o dia (programa aberto de um dia para o outro), muda a lista de hoje.
+  const relogio = setInterval(() => {
+    const hoje = diaDaSemana();
+    if (hoje !== estado.hoje) mudarEstado({ ...estado, hoje });
+  }, 60_000);
+  relogio.unref();
+  servidor.on('close', () => clearInterval(relogio));
 
   wss.on('connection', (socket) => {
     socket.send(pacote());
@@ -92,7 +100,11 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
     }));
     try {
       const criados = await biblioteca.adicionar(arquivos);
-      await recarregar();
+      itens = await biblioteca.listar();
+      // Se o celular escolheu um dia, os itens já entram na lista daquele dia.
+      const novo = adicionarAoDia(estado, req.body?.dia, criados.map((c) => c.id));
+      if (novo !== estado) mudarEstado(novo);
+      else transmitir();
       return { criados };
     } finally {
       await Promise.all(arquivos.map((a) => rm(a.caminho, { force: true })));
@@ -129,12 +141,18 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
   return servidor;
 }
 
-async function lerCulto(arquivo) {
+// Lê as listas de cada dia. A versão anterior tinha uma lista só (culto.json):
+// ela vira a lista de hoje.
+async function lerCultos(pasta) {
   try {
-    const lista = JSON.parse(await readFile(arquivo, 'utf8'));
-    return Array.isArray(lista) ? lista : [];
+    return JSON.parse(await readFile(path.join(pasta, 'cultos.json'), 'utf8'));
   } catch {
-    return [];
+    try {
+      const antiga = JSON.parse(await readFile(path.join(pasta, 'culto.json'), 'utf8'));
+      return Array.isArray(antiga) ? { [diaDaSemana()]: antiga } : {};
+    } catch {
+      return {};
+    }
   }
 }
 
