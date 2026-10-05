@@ -75,7 +75,9 @@ export class Biblioteca {
 
   // arquivos: [{ nomeOriginal, caminho }]. Cada PDF e cada vídeo vira um item;
   // várias imagens enviadas juntas viram uma apresentação, em ordem de nome.
-  async adicionar(arquivos) {
+  // Com copiar: true, o arquivo original fica onde está (usado nas pastas dos dias).
+  async adicionar(arquivos, { copiar = false } = {}) {
+    const levar = copiar ? copyFile : mover;
     const porTipo = (t) => arquivos.filter((a) => tipoDoArquivo(a.nomeOriginal) === t);
     const pdfs = porTipo('pdf');
     const videos = porTipo('video');
@@ -96,7 +98,7 @@ export class Biblioteca {
         const slides = [];
         for (const [i, img] of imagens.entries()) {
           const nome = nomePagina(i + 1).replace('.jpg', path.extname(img.nomeOriginal).toLowerCase());
-          await mover(img.caminho, path.join(pasta, nome));
+          await levar(img.caminho, path.join(pasta, nome));
           slides.push(nome);
         }
         return { slides };
@@ -105,7 +107,7 @@ export class Biblioteca {
     for (const video of videos) {
       criados.push(await this.#criar('video', video.nomeOriginal, async (pasta) => {
         const arquivo = `video${path.extname(video.nomeOriginal).toLowerCase()}`;
-        await mover(video.caminho, path.join(pasta, arquivo));
+        await levar(video.caminho, path.join(pasta, arquivo));
         return { arquivo };
       }));
     }
@@ -132,13 +134,38 @@ export class Biblioteca {
     return this.#criar('musica', titulo, async () => dados);
   }
 
+  // Cria uma apresentação nova só com alguns slides de outra (ex.: o slide de domingo
+  // que veio no PDF de segunda). As imagens são copiadas e numeradas de novo.
+  async copiarSlides(id, indices) {
+    if (!idValido(id)) throw new Error('Id inválido.');
+    const origem = JSON.parse(await readFile(path.join(this.pasta, id, 'info.json'), 'utf8'));
+    if ((origem.tipo ?? 'slides') !== 'slides') throw new Error('Só dá para copiar slides.');
+    const escolhidos = [...new Set(indices.map(Number))]
+      .filter((i) => Number.isInteger(i) && i >= 0 && i < origem.slides.length)
+      .sort((a, b) => a - b);
+    if (escolhidos.length === 0) throw new Error('Escolha pelo menos um slide.');
+
+    const numeros = escolhidos.map((i) => i + 1).join(', ');
+    const nome = `${origem.nome} (slide${escolhidos.length > 1 ? 's' : ''} ${numeros})`;
+    return this.#criar('slides', nome, async (pasta) => {
+      const slides = [];
+      for (const [n, i] of escolhidos.entries()) {
+        const arquivo = origem.slides[i];
+        const novo = nomePagina(n + 1).replace('.jpg', path.extname(arquivo));
+        await copyFile(path.join(this.pasta, id, arquivo), path.join(pasta, novo));
+        slides.push(novo);
+      }
+      return { slides };
+    }, { nome });
+  }
+
   async remover(id) {
     if (!idValido(id)) throw new Error('Id inválido.');
     await rm(path.join(this.pasta, id), { recursive: true, force: true });
   }
 
-  async #criar(tipo, nomeOriginal, preencher) {
-    const nome = tipo === 'musica' ? nomeOriginal : path.basename(nomeOriginal, path.extname(nomeOriginal));
+  async #criar(tipo, nomeOriginal, preencher, opcoes = {}) {
+    const nome = opcoes.nome ?? (tipo === 'musica' ? nomeOriginal : path.basename(nomeOriginal, path.extname(nomeOriginal)));
     const id = criarId(nome);
     const pasta = path.join(this.pasta, id);
     await mkdir(pasta, { recursive: true });

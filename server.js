@@ -18,6 +18,7 @@ try {
   servidor = await criarServidor({
     pastaBiblioteca: path.join(PASTA_RAIZ, 'biblioteca'),
     pastaPublica: path.join(PASTA_RAIZ, 'public'),
+    pastaDias: path.join(PASTA_RAIZ, 'Pastas do Projetor'),
     porta,
   });
 } catch (erro) {
@@ -35,6 +36,8 @@ console.log('  Projetor Igreja está rodando!');
 console.log('');
 console.log(`  Telão (abra neste computador): http://localhost:${porta}/telao.html`);
 console.log(`  Celular (mesmo Wi-Fi):         ${endereco}`);
+console.log(`  Pastas dos dias:               ${path.join(PASTA_RAIZ, 'Pastas do Projetor')}`);
+console.log('  (coloque PDF, imagens ou vídeos na pasta do dia e eles aparecem sozinhos)');
 console.log('');
 console.log('  Para desligar, feche esta janela.');
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Biblioteca, separarEstrofes, tipoDoArquivo } from '../src/biblioteca.js';
@@ -76,4 +76,29 @@ test('ignora pastas sem info.json e itens antigos viram slides', () => comPasta(
   const lista = await bib.listar();
   assert.equal(lista.length, 1);
   assert.equal(lista[0].tipo, 'slides');
+}));
+
+test('copia alguns slides para uma apresentação nova, sem mexer na original', () => comPasta(async (pasta) => {
+  const bib = new Biblioteca(pasta);
+  const arquivos = [];
+  for (const nome of ['1.png', '2.png', '3.png']) {
+    const caminho = path.join(pasta, `tmp-${nome}`);
+    await writeFile(caminho, `conteudo ${nome}`);
+    arquivos.push({ nomeOriginal: nome, caminho });
+  }
+  const [original] = await bib.adicionar(arquivos);
+  const copia = await bib.copiarSlides(original.id, [2, 0, 2, 99]);
+  assert.equal(copia.nome, '1 (slides 1, 3)');
+  assert.deepEqual(copia.slides, ['001.png', '002.png']);
+  assert.equal(await readFile(path.join(pasta, copia.id, '002.png'), 'utf8'), 'conteudo 3.png');
+  assert.equal((await bib.listar()).length, 2);
+  await assert.rejects(bib.copiarSlides(original.id, []), /pelo menos um/);
+}));
+
+test('copiar arquivos (pastas dos dias) mantém o original', () => comPasta(async (pasta) => {
+  const bib = new Biblioteca(path.join(pasta, 'bib'));
+  const original = path.join(pasta, 'clipe.mp4');
+  await writeFile(original, 'video');
+  await bib.adicionar([{ nomeOriginal: 'clipe.mp4', caminho: original }], { copiar: true });
+  assert.ok((await readdir(pasta)).includes('clipe.mp4'));
 }));

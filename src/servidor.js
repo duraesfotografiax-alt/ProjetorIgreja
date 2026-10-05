@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
@@ -8,6 +9,7 @@ import multer from 'multer';
 import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { Biblioteca } from './biblioteca.js';
+import { PastasDosDias } from './pastas.js';
 import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
@@ -22,7 +24,7 @@ export function enderecoNaRede() {
   return 'localhost';
 }
 
-export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
+export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas }) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
   const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
   let itens = await biblioteca.listar();
@@ -111,6 +113,26 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
     }
   }));
 
+  // Copia alguns slides para uma apresentação nova e já coloca nos dias escolhidos.
+  app.post('/api/itens/:id/copiar', rota(async (req) => {
+    const copia = await biblioteca.copiarSlides(req.params.id, req.body?.slides ?? []);
+    itens = await biblioteca.listar();
+    let novo = estado;
+    for (const dia of req.body?.dias ?? []) novo = adicionarAoDia(novo, dia, [copia.id]);
+    if (novo !== estado) mudarEstado(novo);
+    else transmitir();
+    return { copia };
+  }));
+
+  // Abre a janela das pastas dos dias no computador (Explorador de Arquivos / Finder).
+  app.post('/api/abrir-pastas', rota(async () => {
+    if (!pastaDias) throw new Error('Pastas dos dias desligadas.');
+    const [cmd, args] = process.platform === 'win32' ? ['explorer', [pastaDias]]
+      : process.platform === 'darwin' ? ['open', [pastaDias]] : ['xdg-open', [pastaDias]];
+    spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+    return { ok: true };
+  }));
+
   app.post('/api/musicas', rota(async (req) => {
     const musica = await biblioteca.salvarMusica({ ...req.body, id: undefined });
     await recarregar();
@@ -138,6 +160,22 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta }) {
     servidor.once('error', reject);
     servidor.listen(porta, resolve);
   });
+
+  // Pastas dos dias no computador (opcional): arquivos colocados nelas entram sozinhos.
+  if (pastaDias) {
+    const pastas = new PastasDosDias({
+      raiz: pastaDias,
+      biblioteca,
+      aoImportar: async (dia, criados) => {
+        itens = await biblioteca.listar();
+        const novo = adicionarAoDia(estado, dia, criados.map((c) => c.id));
+        if (novo !== estado) mudarEstado(novo);
+        else transmitir();
+      },
+    });
+    await pastas.iniciar(intervaloPastas);
+    servidor.on('close', () => pastas.parar());
+  }
   return servidor;
 }
 

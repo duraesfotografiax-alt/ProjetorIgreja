@@ -45,6 +45,19 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     assert.deepEqual(ap.slides, ['001.jpg', '002.jpg']);
     assert.deepEqual((await avisado).estado.cultos.dom, [ap.id]); // já entrou na lista de domingo
 
+    // Copiar um slide para terça e quinta
+    const comCopiaPromessa = esperarEstado(socket, (m) => m.estado.cultos.qui.length === 1);
+    const copiaResp = await fetch(`${base}/api/itens/${ap.id}/copiar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slides: [1], dias: ['ter', 'qui'] }),
+    });
+    const { copia } = await copiaResp.json();
+    assert.deepEqual(copia.slides, ['001.jpg']);
+    const comCopia = await comCopiaPromessa;
+    assert.deepEqual(comCopia.estado.cultos.qui, [copia.id]);
+    assert.deepEqual(comCopia.estado.cultos.ter, [copia.id]);
+    await fetch(`${base}/api/itens/${copia.id}`, { method: 'DELETE' });
+
     // A imagem do slide é servida
     const img = await fetch(`${base}/midia/${ap.id}/002.jpg`);
     assert.equal(img.headers.get('content-type'), 'image/jpeg');

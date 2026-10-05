@@ -5,6 +5,8 @@ Mostra slides, letras de música e vídeos no telão da igreja, tudo controlado 
 - **Envie o PDF pelo celular.** Ele vira slides automaticamente, na ordem certa. Não precisa converter para JPEG nem numerar nada.
 - **Músicas:** cadastre a letra pelo celular (pode colar). Cada estrofe vira uma tela, com letra grande e legível. Tem busca por nome ou trecho da letra.
 - **Vídeos:** envie pelo celular. Tocar, pausar, voltar ao início e volume, tudo pelo celular.
+- **Pastas dos dias no computador:** coloque o arquivo na pasta do dia (ex.: `Pastas do Projetor/3 - Quarta`) e ele aparece no programa sozinho em poucos segundos, já convertido e na lista daquele dia. Não precisa atualizar nada.
+- **Copiar slides para outros dias:** se o PDF de segunda tem um slide falando de domingo, escolha só esse slide e copie para os dias que quiser.
 - **Uma lista para cada dia (segunda a domingo):** o programa abre direto na lista de hoje. O mesmo item pode estar em vários dias (por exemplo, a chamada de segunda no domingo e na segunda), e o botão **Próximo** passa de um item para o outro sozinho.
 - **Controle pelo celular:** próximo, anterior, escolher o slide ou a estrofe, tela preta.
 - **Conexão por QR code:** o telão mostra um QR code. É só apontar a câmera do celular. Não precisa instalar aplicativo.
@@ -34,7 +36,8 @@ O celular precisa estar **no mesmo Wi-Fi** que o computador. Aponte a câmera pa
 O controle no celular tem três abas:
 
 - **Culto:** escolha o dia (Seg, Ter, … Dom; o pontinho verde marca hoje) e veja a ordem daquele dia. Reordene com ↑ ↓, tire com ✕ ou use **Limpar dia** (os arquivos continuam guardados).
-- **Arquivos:** escolha em **Colocar em** o dia e envie PDF, imagens ou vídeo (pode ser o que chegou no WhatsApp). Eles já entram na lista daquele dia. Toque num item para escolher o slide e, em **Mostrar nos dias**, ligue ou desligue os dias em que ele aparece.
+- **Arquivos:** escolha em **Colocar em** o dia e envie PDF, imagens ou vídeo (pode ser o que chegou no WhatsApp). Eles já entram na lista daquele dia. Toque num item para escolher o slide e, em **Mostrar nos dias**, ligue ou desligue os dias em que ele aparece. Os botões **Todos · Seg · Ter… · Sem dia** filtram a lista.
+- **Copiar slides:** abra um PDF, toque em **⧉ Copiar slides para outros dias**, toque nos slides que quer, marque os dias e confirme. Os slides viram um item novo, que fica salvo.
 - **Músicas:** toque em **+ Nova**, escreva o nome e cole a letra. Deixe **uma linha em branco entre as estrofes**: cada estrofe vira uma tela. Para colocar a música num dia, abra a música e marque o dia em **Mostrar nos dias**.
 
 Na parte de cima ficam sempre **Próximo** e **◀**, **Tela preta** e **Tirar do telão**. Quando um vídeo está no telão, aparecem os botões do vídeo e o volume.
@@ -43,9 +46,27 @@ Na parte de cima ficam sempre **Próximo** e **◀**, **Tela preta** e **Tirar d
 
 No computador, as setas do teclado também passam os slides, e a tecla **B** liga ou desliga a tela preta.
 
+## Pastas dos dias (no computador)
+
+Ao abrir o programa, ele cria a pasta `Pastas do Projetor`, ao lado do `iniciar-windows.bat`:
+
+```
+Pastas do Projetor/
+  0 - Geral (sem dia)
+  1 - Segunda
+  2 - Terça
+  3 - Quarta
+  4 - Quinta
+  5 - Sexta
+  6 - Sábado
+  7 - Domingo
+```
+
+Coloque o arquivo (PDF, JPG, PNG, MP4…) na pasta do dia, copiando do pen drive ou do WhatsApp Web. Em poucos segundos ele aparece no celular, já convertido e na lista daquele dia. O arquivo original continua na pasta e não é importado de novo. Pelo celular, o botão **📁 Abrir as pastas dos dias no computador** abre essa janela no computador.
+
 ## Onde ficam os arquivos
 
-Tudo fica na pasta `biblioteca/`, um subdiretório por item. Os slides ficam numerados (`001.jpg`, `002.jpg`, …), e as músicas e os vídeos ficam em suas próprias pastas. As listas de cada dia ficam salvas em `biblioteca/cultos.json` e continuam lá quando você fecha e abre o programa.
+**Nada some ao fechar o programa ou desligar o computador.** Tudo fica na pasta `biblioteca/`, um subdiretório por item. Os slides ficam numerados (`001.jpg`, `002.jpg`, …), e as músicas e os vídeos ficam em suas próprias pastas. As listas de cada dia ficam salvas em `biblioteca/cultos.json` e continuam lá quando você fecha e abre o programa.
 
 ## Segurança
 

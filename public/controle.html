@@ -108,6 +108,21 @@
     .colocar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; color: var(--suave); }
     .colocar select { flex: 1; font: inherit; color: var(--texto); background: var(--cartao); border: 1px solid var(--borda);
       border-radius: 10px; padding: 8px; }
+    /* Copiar slides */
+    .miniaturas button.selecionado { border-color: var(--ok); }
+    .miniaturas button.selecionado::after { content: '✓'; position: absolute; top: 2px; left: 4px; color: #fff;
+      background: var(--ok); border-radius: 50%; width: 18px; height: 18px; font-size: 12px; line-height: 18px; }
+    .copiar { margin-top: 10px; padding: 10px; border: 1px dashed var(--ok); border-radius: 12px; }
+    .copiar p { margin: 0 0 8px; font-size: 14px; color: var(--suave); }
+    .copiar .rodape { margin-top: 10px; }
+    .filtro { display: flex; gap: 6px; overflow-x: auto; margin: 4px 0 10px; padding-bottom: 2px; }
+    .filtro button { flex: none; padding: 6px 12px; border: 1px solid var(--borda); border-radius: 999px; font-size: 13px; color: var(--suave); }
+    .filtro button.ativo { background: var(--borda); color: var(--texto); }
+    .pastas { width: 100%; margin: 4px 0 2px; padding: 10px; border: 1px solid var(--borda); font-size: 14px; }
+    .dica { font-size: 13px; color: var(--suave); margin: 4px 2px 12px; }
+    /* Marca */
+    .marca { display: flex; flex-direction: column; }
+    .durans { font: 800 12px/1 system-ui, sans-serif; letter-spacing: .35em; color: var(--destaque); margin-bottom: 4px; }
     .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
 
     /* Editor de música */
@@ -127,7 +142,7 @@
 </head>
 <body>
   <header>
-    <h1>Controle do Telão</h1>
+    <div class="marca"><span class="durans">DURANS</span><h1>Controle do Telão</h1></div>
     <span id="status">Conectando…</span>
   </header>
 
@@ -178,6 +193,9 @@
       <input id="arquivo" type="file" accept="application/pdf,image/*,video/*" multiple hidden>
     </label>
     <div id="progresso"></div>
+    <button class="pastas" id="abrirPastas">📁 Abrir as pastas dos dias no computador</button>
+    <p class="dica">No computador, é só colocar o arquivo na pasta do dia (ex.: “3 - Quarta”). Ele aparece aqui sozinho, já convertido e na lista daquele dia.</p>
+    <div class="filtro" id="filtroArquivos"></div>
     <div class="lista" id="listaArquivos"></div>
   </section>
 
@@ -209,6 +227,8 @@
     const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira',
       sex: 'Sexta-feira', sab: 'Sábado', dom: 'Domingo' };
     let diaVisto = null;   // dia mostrado na aba Culto (começa no dia de hoje)
+    let filtroArquivos = 'todos';
+    let copiando = null;   // { chave, id, slides: Set, dias: Set } enquanto escolhe slides para copiar
     let hojeVisto = null;
     let estado = null;
     let itens = [];
@@ -352,15 +372,29 @@
       const dia = aba === 'culto' ? diaVisto : undefined; // abrir pela lista do dia segue a ordem dela
 
       if (item.tipo === 'slides') {
+        const chave = `${aba}:${item.id}`;
+        const selecao = copiando?.chave === chave ? copiando : null;
         const grade = document.createElement('div');
         grade.className = 'miniaturas';
         item.slides.forEach((_, i) => {
-          const b = Object.assign(document.createElement('button'), { className: atual(i) });
+          const b = Object.assign(document.createElement('button'), {
+            className: selecao ? (selecao.slides.has(i) ? 'selecionado' : '') : atual(i),
+          });
           b.innerHTML = `<img src="${urlSlide(item, i)}" alt="Slide ${i + 1}" loading="lazy"><span>${i + 1}</span>`;
-          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
+          b.onclick = selecao
+            ? () => { selecao.slides.has(i) ? selecao.slides.delete(i) : selecao.slides.add(i); desenharListas(); }
+            : () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
           grade.append(b);
         });
         caixa.append(grade);
+        if (selecao) caixa.append(painelCopia(item, selecao));
+        else if (item.slides.length > 1) {
+          const copiar = Object.assign(document.createElement('button'), { textContent: '⧉ Copiar slides para outros dias' });
+          copiar.onclick = () => { copiando = { chave, id: item.id, slides: new Set(), dias: new Set() }; desenharListas(); };
+          const linha = Object.assign(document.createElement('div'), { className: 'acoes' });
+          linha.append(copiar);
+          caixa.append(linha);
+        }
       } else if (item.tipo === 'musica') {
         const lista = document.createElement('div');
         lista.className = 'estrofes';
@@ -395,6 +429,65 @@
       }
       return caixa;
     }
+
+    // Escolher slides de um PDF (ex.: o slide de domingo que veio no PDF de segunda)
+    // e copiar para os dias marcados. Vira um item novo, que fica salvo na aba Arquivos.
+    function painelCopia(item, selecao) {
+      const painel = Object.assign(document.createElement('div'), { className: 'copiar' });
+      painel.append(Object.assign(document.createElement('p'), {
+        textContent: 'Toque nos slides que quer copiar e escolha os dias:',
+      }));
+      const linha = Object.assign(document.createElement('div'), { className: 'dias' });
+      for (const d of DIAS) {
+        const b = Object.assign(document.createElement('button'), {
+          textContent: ABREV[d], className: selecao.dias.has(d) ? 'ativo' : '',
+        });
+        b.onclick = () => { selecao.dias.has(d) ? selecao.dias.delete(d) : selecao.dias.add(d); desenharListas(); };
+        linha.append(b);
+      }
+      const rodape = Object.assign(document.createElement('div'), { className: 'rodape' });
+      const cancelar = Object.assign(document.createElement('button'), { textContent: 'Cancelar', type: 'button' });
+      cancelar.onclick = () => { copiando = null; desenharListas(); };
+      const n = selecao.slides.size;
+      const ok = Object.assign(document.createElement('button'), {
+        className: 'botao', disabled: n === 0,
+        textContent: n === 0 ? 'Copiar' : `Copiar ${n} slide${n > 1 ? 's' : ''}`,
+      });
+      ok.onclick = async () => {
+        ok.disabled = true;
+        const resposta = await fetch(`/api/itens/${item.id}/copiar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slides: [...selecao.slides], dias: [...selecao.dias] }),
+        }).catch(() => null);
+        const dados = await resposta?.json().catch(() => ({}));
+        if (!resposta?.ok) { alert(dados?.erro || 'Não foi possível copiar.'); ok.disabled = false; return; }
+        copiando = null;
+        abertos.add(`arquivos:${dados.copia.id}`);
+        desenharListas();
+      };
+      rodape.append(cancelar, ok);
+      painel.append(linha, rodape);
+      return painel;
+    }
+
+    function desenharFiltro() {
+      const opcoes = [['todos', 'Todos'], ...DIAS.map((d) => [d, ABREV[d]]), ['nenhum', 'Sem dia']];
+      $('filtroArquivos').replaceChildren(...opcoes.map(([valor, texto]) => {
+        const b = Object.assign(document.createElement('button'), {
+          textContent: texto, className: filtroArquivos === valor ? 'ativo' : '',
+        });
+        b.onclick = () => { filtroArquivos = valor; desenharListas(); };
+        return b;
+      }));
+    }
+
+    $('abrirPastas').onclick = async () => {
+      const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);
+      $('abrirPastas').textContent = resposta?.ok
+        ? '📁 Pastas abertas no computador' : '📁 Não foi possível abrir as pastas';
+      setTimeout(() => { $('abrirPastas').textContent = '📁 Abrir as pastas dos dias no computador'; }, 3000);
+    };
 
     // Botões Seg..Dom: liga e desliga o item na lista de cada dia.
     function escolherDias(item) {
@@ -463,9 +556,14 @@
       preencher($('listaMusicas'), musicas.map((m) => cartao(m, 'musicas')),
         termo ? 'Nenhuma música encontrada.' : 'Nenhuma música ainda. Toque em “+ Nova” para cadastrar.');
 
-      const arquivos = itens.filter((i) => i.tipo !== 'musica');
+      desenharFiltro();
+      const arquivos = itens.filter((i) => i.tipo !== 'musica').filter((i) => {
+        if (filtroArquivos === 'todos') return true;
+        const dias = diasDoItem(i);
+        return filtroArquivos === 'nenhum' ? dias.length === 0 : dias.includes(filtroArquivos);
+      });
       preencher($('listaArquivos'), arquivos.map((a) => cartao(a, 'arquivos')),
-        'Nenhum arquivo ainda. Envie um PDF, imagens ou vídeo acima.');
+        filtroArquivos === 'todos' ? 'Nenhum arquivo ainda. Envie um PDF, imagens ou vídeo acima.' : 'Nenhum arquivo neste dia.');
     }
 
     const normalizar = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
