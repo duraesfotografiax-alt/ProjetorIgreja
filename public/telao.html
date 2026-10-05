@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telão</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+    .camada {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      object-fit: contain; opacity: 0; transition: opacity .35s ease;
+    }
+    .visivel { opacity: 1; }
+    video.camada { background: #000; }
+
+    /* Letra de música: texto branco grande sobre fundo escuro */
+    #letra {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, #1d2a4a 0%, #0b0f1c 75%);
+      opacity: 0; transition: opacity .35s ease;
+    }
+    #letra.visivel { opacity: 1; }
+    #texto {
+      width: 88vw; max-height: 84vh; color: #fff; text-align: center; white-space: pre-line;
+      font: 700 8vh/1.25 system-ui, 'Segoe UI', Roboto, sans-serif;
+      text-shadow: 0 .04em .12em rgba(0, 0, 0, .8); transition: opacity .25s ease;
+    }
+
+    #preta { position: fixed; inset: 0; background: #000; opacity: 0; transition: opacity .35s; pointer-events: none; }
+    #preta.ligada { opacity: 1; }
+    #inicio {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 24px; color: #eee; font: 500 28px/1.3 system-ui, sans-serif; text-align: center; cursor: default;
+    }
+    #inicio[hidden] { display: none; }
+    #inicio img { width: min(40vh, 400px); border-radius: 12px; background: #fff; padding: 8px; }
+    #inicio small { color: #999; font-size: 20px; }
+    #inicio .durans { position: absolute; top: 28px; font-weight: 800; font-size: 18px; letter-spacing: .4em; color: #4f8cff; }
+    #aviso { position: fixed; bottom: 16px; left: 0; right: 0; color: #888; font-size: 16px; cursor: pointer; }
+    #som {
+      position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, .7); color: #fff; cursor: pointer;
+      font: 600 16px system-ui, sans-serif; padding: 10px 14px; border-radius: 10px;
+    }
+    #som[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <img id="a" class="camada" alt="">
+  <img id="b" class="camada" alt="">
+  <div id="letra"><div id="texto"></div></div>
+  <video id="video" class="camada" playsinline preload="auto"></video>
+  <div id="preta"></div>
+
+  <div id="inicio">
+    <div class="durans">DURANS</div>
+    <div>Aponte a câmera do celular para controlar o telão</div>
+    <img id="qrcode" alt="QR code para conectar o celular">
+    <small id="url"></small>
+    <div id="aviso">Clique aqui ou aperte F11 para tela cheia</div>
+  </div>
+  <div id="som" hidden>🔇 Clique aqui para liberar o som do vídeo</div>
+
+  <script type="module">
+    import { conectar, urlSlide, urlVideo } from '/conexao.js';
+
+    const $ = (id) => document.getElementById(id);
+    const camadas = [$('a'), $('b')];
+    const video = $('video');
+    let frente = 0;
+    let srcAtual = null;
+    let ultimo = { estado: null, itens: [] };
+    let reinicioVisto = null;
+
+    fetch('/api/conexao').then((r) => r.json()).then(({ url, qrcode }) => {
+      $('qrcode').src = qrcode;
+      $('url').textContent = url;
+    });
+
+    // Slides: troca com transição suave, carrega por trás e depois mostra.
+    function mostrarImagem(src) {
+      if (src === srcAtual) return;
+      srcAtual = src;
+      if (!src) { camadas.forEach((c) => c.classList.remove('visivel')); return; }
+      const tras = camadas[1 - frente];
+      tras.onload = () => {
+        if (srcAtual !== src) return;
+        tras.classList.add('visivel');
+        camadas[frente].classList.remove('visivel');
+        frente = 1 - frente;
+      };
+      tras.src = src;
+    }
+
+    // Letra: diminui a fonte até a estrofe caber na tela.
+    function mostrarLetra(texto) {
+      const caixa = $('letra');
+      caixa.classList.toggle('visivel', texto !== null);
+      if (texto === null || $('texto').dataset.texto === texto) return;
+      const el = $('texto');
+      el.style.opacity = 0;
+      setTimeout(() => {
+        el.dataset.texto = texto;
+        el.textContent = texto;
+        let tamanho = 9;
+        el.style.fontSize = `${tamanho}vh`;
+        while (tamanho > 3 && (el.scrollHeight > innerHeight * 0.84 || el.scrollWidth > el.clientWidth)) {
+          tamanho -= 0.5;
+          el.style.fontSize = `${tamanho}vh`;
+        }
+        el.style.opacity = 1;
+      }, 200);
+    }
+
+    // Vídeo: segue o estado (tocar, pausar, reiniciar, volume).
+    function controlarVideo(src, estado) {
+      if (!src) {
+        video.classList.remove('visivel');
+        video.pause();
+        if (video.getAttribute('src')) { video.removeAttribute('src'); video.load(); }
+        return;
+      }
+      video.classList.add('visivel');
+      if (video.getAttribute('src') !== src) { video.src = src; reinicioVisto = null; }
+      if (reinicioVisto !== estado.video.reinicio) { video.currentTime = 0; reinicioVisto = estado.video.reinicio; }
+      video.volume = estado.volume;
+      if (estado.video.tocando) {
+        video.muted = false;
+        video.play().catch(() => {
+          // O navegador bloqueia som antes de alguém clicar na página: toca sem som e avisa.
+          video.muted = true;
+          video.play().catch(() => {});
+          $('som').hidden = false;
+        });
+      } else {
+        video.pause();
+      }
+    }
+
+    $('som').onclick = () => {
+      $('som').hidden = true;
+      video.muted = false;
+      if (ultimo.estado?.video.tocando) video.play().catch(() => {});
+    };
+
+    function preCarregar(item, indice) {
+      if (item?.tipo === 'slides' && indice < item.slides.length) new Image().src = urlSlide(item, indice);
+    }
+
+    const enviar = conectar({
+      aoReceberEstado(estado, itens) {
+        ultimo = { estado, itens };
+        const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
+        const slide = estado.atual?.slide ?? 0;
+        $('inicio').hidden = Boolean(item);
+        $('preta').classList.toggle('ligada', estado.telaPreta);
+        mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
+        mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide] : null);
+        controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
+        preCarregar(item, slide + 1);
+      },
+    });
+
+    // Avisa o celular quando o vídeo termina, para o botão voltar a "Tocar".
+    video.onended = () => enviar({ acao: 'video', comando: 'pausar' });
+
+    // Teclado do computador também funciona (setas, espaço, B para tela preta).
+    document.addEventListener('keydown', (e) => {
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) enviar({ acao: 'proximo' });
+      if (['ArrowLeft', 'PageUp'].includes(e.key)) enviar({ acao: 'anterior' });
+      if (e.key.toLowerCase() === 'b') enviar({ acao: 'telaPreta', ligada: !ultimo.estado?.telaPreta });
+    });
+
+    const aviso = $('aviso');
+    aviso.onclick = () => document.documentElement.requestFullscreen?.();
+    document.addEventListener('fullscreenchange', () => { aviso.hidden = Boolean(document.fullscreenElement); });
+  </script>
+</body>
+</html>
