@@ -74,6 +74,21 @@ Na mesma tela está o passo a passo para colocar o **ícone "Telão"** na tela i
 
 **Importante:** o ícone guarda o endereço do computador (ex.: `http://192.168.0.10:8080`). Se o roteador der outro endereço para o computador, o ícone para de achar o telão. Para não acontecer, peça para quem cuida da internet **reservar um IP fixo para o computador do telão** no roteador. Se mudar mesmo assim, é só ler o QR de novo e recolocar o ícone.
 
+## Tela do computador (qualquer site, como Univer Vídeo)
+
+Na aba **Arquivos** (primeiro da lista) tem o item fixo **🖥️ Tela do computador**. Ele mostra no telão uma **aba ou janela** do computador, de qualquer site (Univer Vídeo, Facebook, Zoom…), com o **volume pelo celular**. Não precisa duplicar a tela nem apertar F11.
+
+**Passo a passo (na primeira vez de cada transmissão):**
+1. No computador, abra o site em **outra janela do Chrome** (ex.: a transmissão do Univer) e comece a tocar.
+2. No celular, abra **🖥️ Tela do computador** e toque em **▶ Mostrar tela do computador**.
+3. No telão aparece o botão **“Clique aqui e escolha a aba ou janela”**. Clique, escolha **Guia do Chrome**, selecione a aba da transmissão e marque **“Compartilhar áudio da guia”**. Depois, **Compartilhar**.
+4. Pronto: a aba aparece em tela cheia no telão. O som da aba **só sai pelo telão**, e o volume e o **🔇 Silenciar** ficam no celular.
+
+Dicas:
+- O telão precisa estar aberto em **`http://localhost:8080/telao.html`** (é o endereço que o `iniciar-windows.bat` abre). Por segurança, o navegador só libera a captura de tela nesse endereço.
+- A aba continua sendo capturada mesmo se você trocar de item no celular, então ao voltar não precisa escolher de novo. Para parar, feche a aba ou toque em "Parar compartilhamento" na barra do Chrome.
+- Use o **Chrome** ou o **Edge** no computador. O áudio da aba depende do navegador e do sistema; se não vier som, confira se marcou "Compartilhar áudio da guia".
+
 ## Áudio (MP3, M4A, WAV…)
 
 Envie o áudio pelo celular (aba **Arquivos**) ou coloque na pasta do dia no computador. Ele toca **pelo computador**, com **tocar, pausar, voltar ao início e volume** pelo celular. Enquanto toca, o telão continua mostrando o fundo da tela, com o nome da faixa bem discreto no canto. Formatos: MP3, M4A, WAV, OGG, AAC e FLAC.

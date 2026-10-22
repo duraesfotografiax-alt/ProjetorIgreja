@@ -31,13 +31,13 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
 
   try {
     const inicial = await esperarEstado(socket, () => true);
-    assert.equal(inicial.itens.length, 0);
+    assert.deepEqual(inicial.itens.map((i) => i.id), ['tela']); // só o item fixo "Tela do computador"
 
     // Envio de PDF com nome acentuado
     const form = new FormData();
     form.append('dia', 'dom');
     form.append('arquivos', new Blob([criarPdf(['Um', 'Dois'])], { type: 'application/pdf' }), 'Culto de Domingo – Louvor.pdf');
-    const avisado = esperarEstado(socket, (m) => m.itens.length === 1);
+    const avisado = esperarEstado(socket, (m) => m.itens.length === 2);
     const resposta = await fetch(`${base}/api/enviar`, { method: 'POST', body: form });
     assert.equal(resposta.status, 200);
     const { criados: [ap] } = await resposta.json();
@@ -76,7 +76,7 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     assert.match((await recusa.json()).erro, /PDF/);
 
     // Apagar tira do telão
-    const limpo = esperarEstado(socket, (m) => m.itens.length === 0 && m.estado.atual === null);
+    const limpo = esperarEstado(socket, (m) => m.itens.length === 1 && m.estado.atual === null);
     await fetch(`${base}/api/itens/${ap.id}`, { method: 'DELETE' });
     await limpo;
 
@@ -100,6 +100,12 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     assert.match(manifesto.headers.get('content-type'), /manifest\+json/);
     assert.equal((await manifesto.json()).start_url, '/controle.html');
     assert.equal((await fetch(`${base}/icones/icone-512.png`)).headers.get('content-type'), 'image/png');
+
+    // A tela do computador é um item fixo: abre no telão e não pode ser apagada
+    socket.send(JSON.stringify({ acao: 'abrir', id: 'tela' }));
+    const comTela = await esperarEstado(socket, (m) => m.estado.atual?.id === 'tela');
+    assert.equal(comTela.estado.video.tocando, true);
+    assert.equal((await fetch(`${base}/api/itens/tela`, { method: 'DELETE' })).status, 400);
 
     // QR code de conexão
     const conexao = await (await fetch(`${base}/api/conexao`)).json();

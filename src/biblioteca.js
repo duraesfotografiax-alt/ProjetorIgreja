@@ -37,7 +37,7 @@ export function separarEstrofes(letra) {
 // Quantas telas o item tem (usado para avançar e voltar).
 export function totalPartes(item) {
   if (item.tipo === 'musica') return item.estrofes.length;
-  if (item.tipo === 'video' || item.tipo === 'youtube' || item.tipo === 'audio') return 1;
+  if (['video', 'youtube', 'audio', 'tela'].includes(item.tipo)) return 1;
   return item.slides.length;
 }
 

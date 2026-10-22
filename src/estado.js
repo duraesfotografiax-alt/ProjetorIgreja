@@ -62,7 +62,7 @@ export function aplicarComando(estado, comando, itens) {
     case 'fechar':
       return { ...estado, atual: null, video: { ...estado.video, tocando: false } };
     case 'video': {
-      if (!['video', 'youtube', 'audio'].includes(atual?.tipo)) return estado;
+      if (!['video', 'youtube', 'audio', 'tela'].includes(atual?.tipo)) return estado;
       if (comando.comando === 'tocar') return { ...estado, video: { ...estado.video, tocando: true } };
       if (comando.comando === 'pausar') return { ...estado, video: { ...estado.video, tocando: false } };
       if (comando.comando === 'reiniciar') return { ...estado, video: { tocando: true, reinicio: estado.video.reinicio + 1 } };
@@ -97,7 +97,7 @@ function abrir(estado, item, slide, dia) {
     telaPreta: false,
   };
   // Vídeo começa a tocar do início assim que vai para o telão.
-  if (['video', 'youtube', 'audio'].includes(item.tipo)) novo.video = { tocando: true, reinicio: estado.video.reinicio + 1 };
+  if (['video', 'youtube', 'audio', 'tela'].includes(item.tipo)) novo.video = { tocando: true, reinicio: estado.video.reinicio + 1 };
   else novo.video = { ...estado.video, tocando: false };
   return novo;
 }

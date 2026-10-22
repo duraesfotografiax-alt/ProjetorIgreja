@@ -25,10 +25,14 @@ export function enderecoNaRede() {
   return 'localhost';
 }
 
+// Item fixo (não é arquivo): mostra no telão uma aba ou janela do computador.
+const ITEM_TELA = { id: 'tela', tipo: 'tela', nome: 'Tela do computador', criadaEm: '' };
+
 export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas }) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
   const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
-  let itens = await biblioteca.listar();
+  const listarTudo = async () => [ITEM_TELA, ...await biblioteca.listar()];
+  let itens = await listarTudo();
   let estado = ajustarAposRemocao(estadoInicial(await lerCultos(pastaBiblioteca)), itens);
 
   const app = express();
@@ -55,7 +59,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
     transmitir();
   };
   const recarregar = async () => {
-    itens = await biblioteca.listar();
+    itens = await listarTudo();
     const novo = ajustarAposRemocao(estado, itens);
     if (novo !== estado) mudarEstado(novo);
     else transmitir();
@@ -115,7 +119,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
     }));
     try {
       const criados = await biblioteca.adicionar(arquivos);
-      itens = await biblioteca.listar();
+      itens = await listarTudo();
       // Se o celular escolheu um dia, os itens já entram na lista daquele dia.
       const novo = adicionarAoDia(estado, req.body?.dia, criados.map((c) => c.id));
       if (novo !== estado) mudarEstado(novo);
@@ -129,7 +133,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   // Copia alguns slides para uma apresentação nova e já coloca nos dias escolhidos.
   app.post('/api/itens/:id/copiar', rota(async (req) => {
     const copia = await biblioteca.copiarSlides(req.params.id, req.body?.slides ?? []);
-    itens = await biblioteca.listar();
+    itens = await listarTudo();
     let novo = estado;
     for (const dia of req.body?.dias ?? []) novo = adicionarAoDia(novo, dia, [copia.id]);
     if (novo !== estado) mudarEstado(novo);
@@ -170,7 +174,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
     if (!lido) throw new Error('Não reconheci esse link. Use o link do vídeo ou da transmissão (ex.: youtube.com/live/...).');
     const nome = req.body?.nome || await tituloYoutube(link);
     const item = await biblioteca.salvarYoutube({ link, nome, ...lido });
-    itens = await biblioteca.listar();
+    itens = await listarTudo();
     const novo = adicionarAoDia(estado, req.body?.dia, [item.id]);
     if (novo !== estado) mudarEstado(novo);
     else transmitir();
@@ -190,6 +194,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   }));
 
   app.delete('/api/itens/:id', rota(async (req) => {
+    if (req.params.id === ITEM_TELA.id) throw new Error('A tela do computador não pode ser apagada.');
     await biblioteca.remover(req.params.id);
     await recarregar();
     return { ok: true };
@@ -211,7 +216,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
       raiz: pastaDias,
       biblioteca,
       aoImportar: async (dia, criados) => {
-        itens = await biblioteca.listar();
+        itens = await listarTudo();
         const novo = adicionarAoDia(estado, dia, criados.map((c) => c.id));
         if (novo !== estado) mudarEstado(novo);
         else transmitir();
