@@ -74,6 +74,12 @@ Na mesma tela está o passo a passo para colocar o **ícone "Telão"** na tela i
 
 **Importante:** o ícone guarda o endereço do computador (ex.: `http://192.168.0.10:8080`). Se o roteador der outro endereço para o computador, o ícone para de achar o telão. Para não acontecer, peça para quem cuida da internet **reservar um IP fixo para o computador do telão** no roteador. Se mudar mesmo assim, é só ler o QR de novo e recolocar o ícone.
 
+## Áudio (MP3, M4A, WAV…)
+
+Envie o áudio pelo celular (aba **Arquivos**) ou coloque na pasta do dia no computador. Ele toca **pelo computador**, com **tocar, pausar, voltar ao início e volume** pelo celular. Enquanto toca, o telão continua mostrando o fundo da tela, com o nome da faixa bem discreto no canto. Formatos: MP3, M4A, WAV, OGG, AAC e FLAC.
+
+Serve para playback de música, trilha de fundo ou uma mensagem gravada. Como no vídeo, na primeira vez clique uma vez na tela do telão para o navegador liberar o som.
+
 ## YouTube (vídeo ou ao vivo)
 
 Na aba **Arquivos**, cole o link do YouTube no campo **📺 YouTube** e toque em **▶ Mostrar no telão**. O vídeo ou a transmissão ao vivo aparece em tela cheia no telão, e o celular controla tocar, pausar e volume. Não precisa duplicar a tela nem ir até o computador. **Só guardar** salva o link no dia escolhido em "Colocar em", para usar depois.

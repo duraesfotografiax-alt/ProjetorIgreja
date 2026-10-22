@@ -1,5 +1,5 @@
 // Guarda tudo o que pode ir para o telão, uma pasta por item: biblioteca/<id>/info.json
-// Tipos: 'slides' (imagens numeradas 001.jpg...), 'video' e 'musica' (letra em estrofes).
+// Tipos: 'slides' (imagens numeradas 001.jpg...), 'video', 'audio', 'youtube' e 'musica' (letra em estrofes).
 import { copyFile, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pdfParaJpegs, nomePagina } from './pdf.js';
@@ -8,6 +8,7 @@ const EXTENSOES = {
   '.pdf': 'pdf',
   '.jpg': 'imagem', '.jpeg': 'imagem', '.png': 'imagem', '.webp': 'imagem',
   '.mp4': 'video', '.m4v': 'video', '.webm': 'video', '.mov': 'video',
+  '.mp3': 'audio', '.m4a': 'audio', '.wav': 'audio', '.ogg': 'audio', '.oga': 'audio', '.aac': 'audio', '.flac': 'audio',
 };
 
 export function tipoDoArquivo(nomeOriginal) {
@@ -36,7 +37,7 @@ export function separarEstrofes(letra) {
 // Quantas telas o item tem (usado para avançar e voltar).
 export function totalPartes(item) {
   if (item.tipo === 'musica') return item.estrofes.length;
-  if (item.tipo === 'video' || item.tipo === 'youtube') return 1;
+  if (item.tipo === 'video' || item.tipo === 'youtube' || item.tipo === 'audio') return 1;
   return item.slides.length;
 }
 
@@ -81,10 +82,11 @@ export class Biblioteca {
     const porTipo = (t) => arquivos.filter((a) => tipoDoArquivo(a.nomeOriginal) === t);
     const pdfs = porTipo('pdf');
     const videos = porTipo('video');
+    const audios = porTipo('audio');
     const imagens = porTipo('imagem')
       .sort((a, b) => a.nomeOriginal.localeCompare(b.nomeOriginal, 'pt-BR', { numeric: true }));
-    if (pdfs.length + videos.length + imagens.length === 0) {
-      throw new Error('Envie um PDF, imagens (JPG, PNG) ou vídeos (MP4).');
+    if (pdfs.length + videos.length + audios.length + imagens.length === 0) {
+      throw new Error('Envie um PDF, imagens (JPG, PNG), vídeos (MP4) ou áudios (MP3).');
     }
 
     const criados = [];
@@ -102,6 +104,13 @@ export class Biblioteca {
           slides.push(nome);
         }
         return { slides };
+      }));
+    }
+    for (const audio of audios) {
+      criados.push(await this.#criar('audio', audio.nomeOriginal, async (pasta) => {
+        const arquivo = `audio${path.extname(audio.nomeOriginal).toLowerCase()}`;
+        await levar(audio.caminho, path.join(pasta, arquivo));
+        return { arquivo };
       }));
     }
     for (const video of videos) {

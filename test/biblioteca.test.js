@@ -20,6 +20,7 @@ test('reconhece os tipos de arquivo', () => {
   assert.equal(tipoDoArquivo('culto.PDF'), 'pdf');
   assert.equal(tipoDoArquivo('foto.jpeg'), 'imagem');
   assert.equal(tipoDoArquivo('clipe.MP4'), 'video');
+  for (const nome of ['a.mp3', 'a.M4A', 'a.wav', 'a.ogg', 'a.aac', 'a.flac']) assert.equal(tipoDoArquivo(nome), 'audio', nome);
   assert.equal(tipoDoArquivo('nota.txt'), null);
 });
 
@@ -101,4 +102,13 @@ test('copiar arquivos (pastas dos dias) mantém o original', () => comPasta(asyn
   await writeFile(original, 'video');
   await bib.adicionar([{ nomeOriginal: 'clipe.mp4', caminho: original }], { copiar: true });
   assert.ok((await readdir(pasta)).includes('clipe.mp4'));
+}));
+
+test('áudio enviado vira item do tipo áudio', () => comPasta(async (pasta) => {
+  const bib = new Biblioteca(pasta);
+  const temporario = path.join(pasta, 'upload-temp');
+  await writeFile(temporario, 'som');
+  const [audio] = await bib.adicionar([{ nomeOriginal: 'Playback Louvor.MP3', caminho: temporario }]);
+  assert.deepEqual([audio.tipo, audio.nome, audio.arquivo], ['audio', 'Playback Louvor', 'audio.mp3']);
+  assert.deepEqual((await readdir(path.join(pasta, audio.id))).sort(), ['audio.mp3', 'info.json']);
 }));

@@ -226,9 +226,9 @@
   <section class="painel" id="aba-arquivos" hidden>
     <label class="colocar">Colocar em: <select id="diaEnvio"></select></label>
     <label class="enviar">
-      📄 Enviar PDF, imagens ou vídeo
+      📄 Enviar PDF, imagens, vídeo ou áudio
       <small>O PDF vira slides automaticamente, na ordem</small>
-      <input id="arquivo" type="file" accept="application/pdf,image/*,video/*" multiple hidden>
+      <input id="arquivo" type="file" accept="application/pdf,image/*,video/*,audio/*" multiple hidden>
     </label>
     <div id="progresso"></div>
     <form class="youtube" id="formYoutube">
@@ -306,7 +306,7 @@
     import { conectar, urlSlide } from '/conexao.js';
 
     const $ = (id) => document.getElementById(id);
-    const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺' };
+    const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧' };
     const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
     const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
     const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira',
@@ -338,11 +338,12 @@
     });
 
     const buscar = (id) => itens.find((i) => i.id === id);
-    const ehVideo = (item) => item?.tipo === 'video' || item?.tipo === 'youtube';
-    const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehVideo(item) ? 1 : item.slides.length;
+    const ehMidia = (item) => ['video', 'youtube', 'audio'].includes(item?.tipo); // vídeo, YouTube e áudio têm tocar/pausar/volume
+    const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehMidia(item) ? 1 : item.slides.length;
     const descricao = (item) => item.tipo === 'musica'
       ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
       : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
+      : item.tipo === 'audio' ? 'Áudio'
       : item.tipo === 'video' ? 'Vídeo' : `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`;
     const descricaoComDias = (item) => [descricao(item), diasDoItem(item).map((d) => ABREV[d]).join(', ')].filter(Boolean).join(' · ');
     const definirCulto = (dia, lista) => enviar({ acao: 'culto', dia, itens: lista });
@@ -378,6 +379,7 @@
         if (item.videoId) {
           previa.append(Object.assign(document.createElement('img'), { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
         }
+        if (item.tipo === 'audio') previa.insertAdjacentHTML('beforeend', '<span style="font-size:42px">🎧</span>');
         previa.insertAdjacentHTML('beforeend', `<span class="icone-video">${estado.video.tocando ? '▶ Tocando' : '⏸ Pausado'}</span>`);
       }
       if (estado.telaPreta) previa.insertAdjacentHTML('beforeend', '<span class="tag">TELA PRETA</span>');
@@ -387,14 +389,14 @@
       const pos = item ? lista.indexOf(item.id) : -1;
       const temVizinho = (passo) => pos >= 0 && Boolean(buscar(lista[pos + passo]));
       $('titulo').textContent = item ? item.nome : '—';
-      $('contador').textContent = item && item.tipo !== 'video' ? `${slide + 1} de ${partes(item)}` : '';
+      $('contador').textContent = item && !ehMidia(item) ? `${slide + 1} de ${partes(item)}` : '';
       $('anterior').disabled = !item || (slide === 0 && !temVizinho(-1));
       $('proximo').disabled = !item || (slide === partes(item) - 1 && !temVizinho(1));
       $('fechar').disabled = !item;
       $('preta').classList.toggle('ativo', estado.telaPreta);
       $('preta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
 
-      $('controlesVideo').hidden = !ehVideo(item);
+      $('controlesVideo').hidden = !ehMidia(item);
       $('reiniciar').hidden = Boolean(item?.canal); // ao vivo não volta ao início
       $('tocar').textContent = estado.video.tocando ? '⏸ Pausar' : '▶ Tocar';
       if (document.activeElement !== $('volume')) $('volume').value = estado.volume;
@@ -500,7 +502,8 @@
         caixa.append(lista);
       } else {
         const b = Object.assign(document.createElement('button'), {
-          className: 'tocar-video ' + atual(0), textContent: noTelao ? '🎬 No telão' : '▶ Mostrar vídeo no telão',
+          className: 'tocar-video ' + atual(0),
+          textContent: item.tipo === 'audio' ? (noTelao ? '🎧 Tocando no telão' : '▶ Tocar áudio') : (noTelao ? '🎬 No telão' : '▶ Mostrar vídeo no telão'),
         });
         b.onclick = () => enviar({ acao: 'abrir', id: item.id, dia });
         caixa.append(b);

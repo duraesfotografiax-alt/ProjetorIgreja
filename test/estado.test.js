@@ -156,3 +156,13 @@ test('QR no telão liga e desliga (para conectar mais celulares)', () => {
   e = aplicarComando(e, { acao: 'qr', ligado: false }, itens);
   assert.equal(e.qrNoTelao, false);
 });
+
+test('áudio começa a tocar ao abrir e aceita pausar e volume', () => {
+  const lista = [...itens, { id: 'som', tipo: 'audio', arquivo: 'audio.mp3' }];
+  let e = aplicarComando(estadoInicial(), { acao: 'abrir', id: 'som' }, lista);
+  assert.equal(e.video.tocando, true);
+  e = aplicarComando(e, { acao: 'video', comando: 'pausar' }, lista);
+  assert.equal(e.video.tocando, false);
+  e = aplicarComando(e, { acao: 'volume', valor: 0.5 }, lista);
+  assert.equal(e.volume, 0.5);
+});

@@ -52,6 +52,10 @@
       font: 600 16px system-ui, sans-serif; padding: 10px 14px; border-radius: 10px;
     }
     #som[hidden] { display: none; }
+    /* Áudio: o fundo da tela continua aparecendo, com o nome da faixa bem discreto */
+    #legenda { position: fixed; left: 2vw; bottom: 2vw; color: rgba(255, 255, 255, .7); font: 500 18px system-ui, sans-serif;
+      background: rgba(0, 0, 0, .35); padding: 8px 14px; border-radius: 10px; }
+    #legenda[hidden] { display: none; }
   </style>
 </head>
 <body>
@@ -60,6 +64,8 @@
   <img id="b" class="camada" alt="">
   <div id="letra"><div id="texto"></div></div>
   <video id="video" class="camada" playsinline preload="auto"></video>
+  <audio id="audio" preload="auto"></audio>
+  <div id="legenda" hidden></div>
   <div id="yt" class="camada"></div>
   <div id="preta"></div>
 
@@ -162,6 +168,32 @@
       }
     }
 
+    // Áudio: toca pelo computador; tocar, pausar, reiniciar e volume vêm do celular.
+    const audio = $('audio');
+    let audioReinicio = null;
+    function controlarAudio(item, estado) {
+      const legenda = $('legenda');
+      if (!item) {
+        legenda.hidden = true;
+        audio.pause();
+        if (audio.getAttribute('src')) { audio.removeAttribute('src'); audio.load(); }
+        return;
+      }
+      legenda.hidden = false;
+      legenda.textContent = `♪ ${item.nome}`;
+      const src = urlVideo(item);
+      if (audio.getAttribute('src') !== src) { audio.src = src; audioReinicio = null; }
+      if (audioReinicio !== estado.video.reinicio) { audio.currentTime = 0; audioReinicio = estado.video.reinicio; }
+      audio.volume = estado.volume;
+      if (estado.video.tocando) {
+        // O navegador pode bloquear o som antes de alguém clicar na página: mostra o aviso para liberar.
+        audio.play().catch(() => { $('som').hidden = false; });
+      } else {
+        audio.pause();
+      }
+    }
+    audio.onended = () => enviar({ acao: 'video', comando: 'pausar' });
+
     // ---------- YouTube (vídeo ou ao vivo) com o player oficial ----------
     let yt = null;          // player do YouTube
     let ytChave = null;     // vídeo (ou canal ao vivo) carregado agora
@@ -231,7 +263,7 @@
       $('som').hidden = true;
       video.muted = false;
       yt?.unMute?.();
-      if (ultimo.estado?.video.tocando) { video.play().catch(() => {}); yt?.playVideo?.(); }
+      if (ultimo.estado?.video.tocando) { video.play().catch(() => {}); audio.play().catch(() => {}); yt?.playVideo?.(); }
     };
 
     function preCarregar(item, indice) {
@@ -244,13 +276,14 @@
         ultimo = { estado, itens, controles };
         const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
         const slide = estado.atual?.slide ?? 0;
-        $('fundo').classList.toggle('escondido', Boolean(item));
+        $('fundo').classList.toggle('escondido', Boolean(item) && item.tipo !== 'audio');
         mostrarConectar();
         $('preta').classList.toggle('ligada', estado.telaPreta);
         mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
         mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide] : null);
         controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
         controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
+        controlarAudio(item?.tipo === 'audio' ? item : null, estado);
         preCarregar(item, slide + 1);
       },
     });
