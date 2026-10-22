@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#16181d">
+  <meta name="theme-color" content="#14110f">
   <title>Controle do Telão</title>
   <!-- Ícone na tela inicial do celular (abre como aplicativo) -->
   <link rel="manifest" href="/manifest.webmanifest">
@@ -15,8 +15,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     :root {
-      --fundo: #16181d; --cartao: #22252d; --borda: #33373f; --texto: #f1f1f3; --suave: #a2a6b0;
-      --destaque: #4f8cff; --perigo: #e5484d; --ok: #30a46c;
+      --fundo: #14110f; --cartao: #1f1a17; --borda: #372e28; --texto: #f4efe9; --suave: #b5a99b;
+      --destaque: #e85a00; --perigo: #ee4b55; --ok: #30a46c;
+      --faixa: linear-gradient(90deg, #c43b07, #d9702c 25%, #f3b757 50%, #e99d49 75%, #c23603);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.4 system-ui, sans-serif;
@@ -150,7 +151,12 @@
     .dica { font-size: 13px; color: var(--suave); margin: 4px 2px 12px; }
     /* Marca */
     .marca { display: flex; flex-direction: column; }
-    .assinatura { text-align: center; color: var(--borda); font-size: 12px; letter-spacing: .08em; margin-top: 28px; }
+    .faixa { height: 3px; border-radius: 2px; background: var(--faixa); opacity: .85; margin-bottom: 12px; }
+    .credito { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 40px 0 8px; color: var(--suave); font-size: 12px; opacity: .8; }
+    .credito img { height: 38px; width: auto; }
+    .credito b { font: 700 13px/1 Georgia, 'Times New Roman', serif; letter-spacing: .22em; text-transform: uppercase; color: var(--texto); }
+    .credito.pequeno { flex-direction: row; justify-content: center; gap: 8px; margin: 18px 0 0; }
+    .credito.pequeno img { height: 24px; }
     .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
 
     /* Editor de música */
@@ -176,6 +182,7 @@
       <button id="abrirCelulares" class="celulares" aria-label="Conectar outro celular ou instalar o ícone">📲</button>
     </span>
   </header>
+  <div class="faixa"></div>
 
   <section class="ao-vivo">
     <div class="previa" id="previa"><span class="vazio">Nada no telão</span></div>
@@ -239,7 +246,10 @@
     <div class="lista" id="listaArquivos"></div>
   </section>
 
-  <p class="assinatura">Durães</p>
+  <footer class="credito">
+    <img src="/logo-duraes.png" alt="Logo Durães" width="23" height="38">
+    <span>App feito pela <b>Durães</b></span>
+  </footer>
 
   <dialog id="celulares">
     <h2>Conectar outro celular</h2>
@@ -251,6 +261,8 @@
       <button type="button" id="qrNoTelao">Mostrar QR no telão</button>
       <button type="button" id="fecharCelulares">Fechar</button>
     </div>
+
+    <div class="credito pequeno"><img src="/logo-duraes.png" alt="" width="15" height="24"><span>App feito pela <b>Durães</b></span></div>
 
     <h3>📲 Colocar o ícone na tela do celular</h3>
     <button type="button" class="botao" id="instalarAgora" hidden>Instalar o ícone agora</button>
