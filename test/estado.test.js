@@ -149,3 +149,10 @@ test('YouTube aceita tocar, pausar e volume como vídeo', () => {
   e = aplicarComando(e, { acao: 'volume', valor: 0.3 }, lista);
   assert.equal(e.volume, 0.3);
 });
+
+test('QR no telão liga e desliga (para conectar mais celulares)', () => {
+  let e = aplicarComando(estadoInicial(), { acao: 'qr', ligado: true }, itens);
+  assert.equal(e.qrNoTelao, true);
+  e = aplicarComando(e, { acao: 'qr', ligado: false }, itens);
+  assert.equal(e.qrNoTelao, false);
+});

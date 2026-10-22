@@ -261,7 +261,7 @@
     // Teclado do computador também funciona (setas, espaço, B para tela preta).
     function mostrarConectar() {
       const item = ultimo.estado?.atual && ultimo.itens.find((i) => i.id === ultimo.estado.atual.id);
-      $('conectar').hidden = !(qrForcado || (!item && !ultimo.controles));
+      $('conectar').hidden = !(qrForcado || ultimo.estado?.qrNoTelao || (!item && !ultimo.controles));
     }
 
     document.addEventListener('keydown', (e) => {

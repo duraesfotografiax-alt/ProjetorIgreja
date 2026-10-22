@@ -22,6 +22,7 @@ export function estadoInicial(cultos = {}, hoje = diaDaSemana()) {
     volume: 1,
     cultos: normalizarCultos(cultos),          // { seg: [ids], ter: [...], ... }
     hoje,
+    qrNoTelao: false,                          // mostrar o QR code no telão para conectar mais celulares
   };
 }
 
@@ -56,6 +57,8 @@ export function aplicarComando(estado, comando, itens) {
     }
     case 'telaPreta':
       return { ...estado, telaPreta: Boolean(comando.ligada) };
+    case 'qr':
+      return { ...estado, qrNoTelao: Boolean(comando.ligado) };
     case 'fechar':
       return { ...estado, atual: null, video: { ...estado.video, tocando: false } };
     case 'video': {

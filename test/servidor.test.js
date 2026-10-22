@@ -95,6 +95,12 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     assert.equal(ytRuim.status, 400);
     await fetch(`${base}/api/itens/${yt.id}`, { method: 'DELETE' });
 
+    // Ícone na tela inicial: manifesto e ícones
+    const manifesto = await fetch(`${base}/manifest.webmanifest`);
+    assert.match(manifesto.headers.get('content-type'), /manifest\+json/);
+    assert.equal((await manifesto.json()).start_url, '/controle.html');
+    assert.equal((await fetch(`${base}/icones/icone-512.png`)).headers.get('content-type'), 'image/png');
+
     // QR code de conexão
     const conexao = await (await fetch(`${base}/api/conexao`)).json();
     assert.match(conexao.qrcode, /^data:image\/png;base64,/);

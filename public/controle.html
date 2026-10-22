@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#16181d">
   <title>Controle do Telão</title>
+  <!-- Ícone na tela inicial do celular (abre como aplicativo) -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icones/icone-192.png">
+  <link rel="apple-touch-icon" href="/icones/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Telão">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
     :root {
       --fundo: #16181d; --cartao: #22252d; --borda: #33373f; --texto: #f1f1f3; --suave: #a2a6b0;
@@ -13,7 +21,18 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.4 system-ui, sans-serif;
       padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top)) 0 14px; }
+    .topo-direita { display: flex; align-items: center; gap: 10px; }
+    .celulares { width: 38px; height: 38px; border: 1px solid var(--borda); font-size: 18px; }
+    #celulares .qr { display: block; width: min(240px, 70vw); margin: 4px auto 6px; border-radius: 12px; background: #fff; padding: 8px; }
+    #celulares .endereco { text-align: center; color: var(--suave); font-size: 13px; word-break: break-all; }
+    #celulares h3 { font-size: 15px; margin: 18px 0 6px; }
+    #celulares ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+    #celulares .contagem { text-align: center; font-size: 14px; margin: 0 0 8px; }
+    #celulares .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    #celulares .botoes button { padding: 10px; border: 1px solid var(--borda); }
+    #celulares .botoes button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
+    #instalarAgora[hidden] { display: none; }
     h1 { font-size: 18px; margin: 0; }
     #status { font-size: 13px; color: var(--suave); display: flex; align-items: center; gap: 6px; }
     #status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--perigo); }
@@ -152,7 +171,10 @@
 <body>
   <header>
     <h1>Controle do Telão</h1>
-    <span id="status">Conectando…</span>
+    <span class="topo-direita">
+      <span id="status">Conectando…</span>
+      <button id="abrirCelulares" class="celulares" aria-label="Conectar outro celular ou instalar o ícone">📲</button>
+    </span>
   </header>
 
   <section class="ao-vivo">
@@ -219,6 +241,37 @@
 
   <p class="assinatura">Durães</p>
 
+  <dialog id="celulares">
+    <h2>Conectar outro celular</h2>
+    <p class="contagem" id="contagemCelulares"></p>
+    <img class="qr" id="qrCelular" alt="QR code para conectar outro celular">
+    <p class="endereco" id="enderecoCelular"></p>
+    <p class="endereco">O outro celular aponta a câmera para este QR (precisa estar no mesmo Wi-Fi).</p>
+    <div class="botoes">
+      <button type="button" id="qrNoTelao">Mostrar QR no telão</button>
+      <button type="button" id="fecharCelulares">Fechar</button>
+    </div>
+
+    <h3>📲 Colocar o ícone na tela do celular</h3>
+    <button type="button" class="botao" id="instalarAgora" hidden>Instalar o ícone agora</button>
+    <div id="passosIphone">
+      <b>iPhone (Safari)</b>
+      <ol>
+        <li>Toque em <b>Compartilhar</b> (o quadrado com a seta para cima).</li>
+        <li>Role e toque em <b>Adicionar à Tela de Início</b>.</li>
+        <li>Toque em <b>Adicionar</b>. Pronto: o ícone “Telão” aparece na tela.</li>
+      </ol>
+    </div>
+    <div id="passosAndroid">
+      <b>Android (Chrome)</b>
+      <ol>
+        <li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li>
+        <li>Toque em <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).</li>
+        <li>Confirme. O ícone “Telão” aparece na tela.</li>
+      </ol>
+    </div>
+  </dialog>
+
   <dialog id="editor">
     <form method="dialog" id="formMusica">
       <h2 id="tituloEditor">Nova música</h2>
@@ -256,9 +309,11 @@
     let editando = null;      // id da música no editor (null = nova)
 
     const enviar = conectar({
-      aoReceberEstado(novoEstado, novosItens) {
+      aoReceberEstado(novoEstado, novosItens, { controles }) {
         estado = novoEstado;
         itens = novosItens;
+        contagemControles = controles ?? 0;
+        if ($('celulares').open) atualizarCelulares();
         // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
         if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
         hojeVisto = estado.hoje;
@@ -530,6 +585,36 @@
     }
     $('formYoutube').onsubmit = (e) => { e.preventDefault(); enviarYoutube(true); };
     $('guardarYoutube').onclick = () => enviarYoutube(false);
+
+    // ---------- Conectar outro celular e instalar o ícone ----------
+    let contagemControles = 0;
+    let pedidoInstalar = null; // Android/Chrome em conexão segura oferece instalar direto
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pedidoInstalar = e; $('instalarAgora').hidden = false; });
+    $('instalarAgora').onclick = async () => { pedidoInstalar?.prompt(); pedidoInstalar = null; $('instalarAgora').hidden = true; };
+
+    $('abrirCelulares').onclick = async () => {
+      const ehIphone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const ehAndroid = /Android/i.test(navigator.userAgent);
+      // Mostra primeiro o passo a passo do aparelho da pessoa.
+      $('passosIphone').hidden = ehAndroid;
+      $('passosAndroid').hidden = ehIphone;
+      atualizarCelulares();
+      $('celulares').showModal();
+      try {
+        const { url, qrcode } = await (await fetch('/api/conexao')).json();
+        $('qrCelular').src = qrcode;
+        $('enderecoCelular').textContent = url;
+      } catch {}
+    };
+    $('fecharCelulares').onclick = () => $('celulares').close();
+    $('qrNoTelao').onclick = () => enviar({ acao: 'qr', ligado: !estado?.qrNoTelao });
+
+    function atualizarCelulares() {
+      $('contagemCelulares').textContent = contagemControles === 1
+        ? '1 celular conectado agora' : `${contagemControles} celulares conectados agora`;
+      $('qrNoTelao').classList.toggle('ativo', Boolean(estado?.qrNoTelao));
+      $('qrNoTelao').textContent = estado?.qrNoTelao ? 'Tirar QR do telão' : 'Mostrar QR no telão';
+    }
 
     $('abrirPastas').onclick = async () => {
       const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);

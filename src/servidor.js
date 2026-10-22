@@ -85,7 +85,11 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   });
 
   app.get('/', (_req, res) => res.redirect('/controle.html'));
-  app.use(express.static(pastaPublica));
+  app.use(express.static(pastaPublica, {
+    setHeaders: (res, arquivo) => {
+      if (arquivo.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    },
+  }));
   app.use('/midia', express.static(pastaBiblioteca, { maxAge: '1h' }));
   app.use(express.json({ limit: '1mb' }));
 

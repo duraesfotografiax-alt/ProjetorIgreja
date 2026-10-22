@@ -64,6 +64,16 @@ Pastas do Projetor/
 
 Coloque o arquivo (PDF, JPG, PNG, MP4…) na pasta do dia, copiando do pen drive ou do WhatsApp Web. Em poucos segundos ele aparece no celular, já convertido e na lista daquele dia. O arquivo original continua na pasta e não é importado de novo. Pelo celular, o botão **📁 Abrir as pastas dos dias no computador** abre essa janela no computador.
 
+## Vários celulares e ícone na tela inicial
+
+Vários celulares podem controlar ao mesmo tempo. No celular já conectado, toque em **📲** (canto de cima): aparece um **QR code na tela do celular** para o outro escanear, e o botão **Mostrar QR no telão**.
+
+Na mesma tela está o passo a passo para colocar o **ícone "Telão"** na tela inicial, que abre o controle direto, como um aplicativo:
+- **iPhone (Safari):** Compartilhar → **Adicionar à Tela de Início**.
+- **Android (Chrome):** três pontinhos ⋮ → **Adicionar à tela inicial** (ou **Instalar app**).
+
+**Importante:** o ícone guarda o endereço do computador (ex.: `http://192.168.0.10:8080`). Se o roteador der outro endereço para o computador, o ícone para de achar o telão. Para não acontecer, peça para quem cuida da internet **reservar um IP fixo para o computador do telão** no roteador. Se mudar mesmo assim, é só ler o QR de novo e recolocar o ícone.
+
 ## YouTube (vídeo ou ao vivo)
 
 Na aba **Arquivos**, cole o link do YouTube no campo **📺 YouTube** e toque em **▶ Mostrar no telão**. O vídeo ou a transmissão ao vivo aparece em tela cheia no telão, e o celular controla tocar, pausar e volume. Não precisa duplicar a tela nem ir até o computador. **Só guardar** salva o link no dia escolhido em "Colocar em", para usar depois.
