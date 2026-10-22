@@ -139,3 +139,13 @@ test('apagar um item tira do telão e das listas de todos os dias', () => {
   assert.deepEqual(depois.cultos.seg, []);
   assert.equal(ajustarAposRemocao(e, itens), e);
 });
+
+test('YouTube aceita tocar, pausar e volume como vídeo', () => {
+  const lista = [...itens, { id: 'yt', tipo: 'youtube', videoId: 'dQw4w9WgXcQ' }];
+  let e = aplicarComando(estadoInicial(), { acao: 'abrir', id: 'yt' }, lista);
+  assert.equal(e.video.tocando, true);
+  e = aplicarComando(e, { acao: 'video', comando: 'pausar' }, lista);
+  assert.equal(e.video.tocando, false);
+  e = aplicarComando(e, { acao: 'volume', valor: 0.3 }, lista);
+  assert.equal(e.volume, 0.3);
+});

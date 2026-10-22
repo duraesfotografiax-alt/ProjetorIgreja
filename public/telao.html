@@ -12,6 +12,8 @@
     }
     .visivel { opacity: 1; }
     video.camada { background: #000; }
+    #yt { background: #000; pointer-events: none; }
+    #yt iframe { width: 100%; height: 100%; border: 0; display: block; }
 
     /* Letra de música: texto branco grande sobre fundo escuro */
     #letra {
@@ -58,6 +60,7 @@
   <img id="b" class="camada" alt="">
   <div id="letra"><div id="texto"></div></div>
   <video id="video" class="camada" playsinline preload="auto"></video>
+  <div id="yt" class="camada"></div>
   <div id="preta"></div>
 
   <div id="conectar" hidden>
@@ -159,10 +162,76 @@
       }
     }
 
+    // ---------- YouTube (vídeo ou ao vivo) com o player oficial ----------
+    let yt = null;          // player do YouTube
+    let ytChave = null;     // vídeo (ou canal ao vivo) carregado agora
+    let ytReinicio = null;
+    let ytApi = null;
+    function apiYoutube() {
+      ytApi ??= new Promise((resolve) => {
+        window.onYouTubeIframeAPIReady = resolve;
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        s.onerror = () => { ytApi = null; };
+        document.head.append(s);
+      });
+      return ytApi;
+    }
+
+    async function controlarYoutube(item, estado) {
+      const caixa = $('yt');
+      if (!item) {
+        caixa.classList.remove('visivel');
+        if (ytChave) { yt?.destroy?.(); yt = null; ytChave = null; caixa.replaceChildren(); }
+        return;
+      }
+      caixa.classList.add('visivel');
+      const chave = item.videoId ?? `canal:${item.canal}`;
+      if (chave !== ytChave) {
+        ytChave = chave;
+        yt?.destroy?.(); yt = null; ytReinicio = estado.video.reinicio;
+        const base = item.videoId
+          ? `https://www.youtube.com/embed/${item.videoId}?`
+          : `https://www.youtube.com/embed/live_stream?channel=${item.canal}&`;
+        const iframe = document.createElement('iframe');
+        iframe.allow = 'autoplay; encrypted-media';
+        iframe.src = `${base}enablejsapi=1&autoplay=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(location.origin)}`;
+        caixa.replaceChildren(iframe);
+        await apiYoutube();
+        if (ytChave !== chave) return; // trocaram de item enquanto carregava
+        await new Promise((resolve) => {
+          yt = new YT.Player(iframe, {
+            events: {
+              onReady: resolve,
+              onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) enviar({ acao: 'video', comando: 'pausar' }); },
+            },
+          });
+        });
+        if (ytChave !== chave) return;
+      }
+      if (!yt?.getPlayerState) return;
+      if (ytReinicio !== estado.video.reinicio) { ytReinicio = estado.video.reinicio; if (item.videoId) yt.seekTo(0, true); }
+      yt.setVolume(Math.round(estado.volume * 100));
+      if (estado.video.tocando) {
+        yt.unMute();
+        yt.playVideo();
+        // Se o navegador bloquear o som, toca sem som e mostra o aviso para liberar.
+        setTimeout(() => {
+          if (!yt?.getPlayerState || !ultimo.estado?.video.tocando) return;
+          if (![YT.PlayerState.PLAYING, YT.PlayerState.BUFFERING].includes(yt.getPlayerState())) {
+            yt.mute(); yt.playVideo(); $('som').hidden = false;
+          }
+        }, 1500);
+      } else {
+        yt.pauseVideo();
+      }
+    }
+
     $('som').onclick = () => {
       $('som').hidden = true;
       video.muted = false;
-      if (ultimo.estado?.video.tocando) video.play().catch(() => {});
+      yt?.unMute?.();
+      if (ultimo.estado?.video.tocando) { video.play().catch(() => {}); yt?.playVideo?.(); }
     };
 
     function preCarregar(item, indice) {
@@ -181,6 +250,7 @@
         mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
         mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide] : null);
         controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
+        controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
         preCarregar(item, slide + 1);
       },
     });

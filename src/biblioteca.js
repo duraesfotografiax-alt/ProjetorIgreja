@@ -36,7 +36,7 @@ export function separarEstrofes(letra) {
 // Quantas telas o item tem (usado para avançar e voltar).
 export function totalPartes(item) {
   if (item.tipo === 'musica') return item.estrofes.length;
-  if (item.tipo === 'video') return 1;
+  if (item.tipo === 'video' || item.tipo === 'youtube') return 1;
   return item.slides.length;
 }
 
@@ -157,6 +157,13 @@ export class Biblioteca {
       }
       return { slides };
     }, { nome });
+  }
+
+  // Link do YouTube (vídeo ou ao vivo) guardado como item, para usar nos dias.
+  async salvarYoutube({ link, nome, videoId, canal }) {
+    if (!videoId && !canal) throw new Error('Link do YouTube não reconhecido.');
+    const titulo = String(nome ?? '').trim() || (canal ? 'YouTube ao vivo' : 'Vídeo do YouTube');
+    return this.#criar('youtube', titulo, async () => ({ link, ...(videoId ? { videoId } : { canal }) }), { nome: titulo });
   }
 
   async remover(id) {

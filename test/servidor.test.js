@@ -80,6 +80,21 @@ test('envia PDF pelo celular, controla os slides e apaga', async () => {
     await fetch(`${base}/api/itens/${ap.id}`, { method: 'DELETE' });
     await limpo;
 
+    // Link do YouTube vira item e entra no dia escolhido (nome informado: não precisa de internet)
+    const ytAvisado = esperarEstado(socket, (m) => m.estado.cultos.sab.length === 1);
+    const ytResp = await fetch(`${base}/api/youtube`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ link: 'https://youtu.be/dQw4w9WgXcQ', nome: 'Culto ao vivo', dia: 'sab' }),
+    });
+    const { item: yt } = await ytResp.json();
+    assert.deepEqual([yt.tipo, yt.videoId, yt.nome], ['youtube', 'dQw4w9WgXcQ', 'Culto ao vivo']);
+    await ytAvisado;
+    const ytRuim = await fetch(`${base}/api/youtube`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link: 'https://exemplo.com' }),
+    });
+    assert.equal(ytRuim.status, 400);
+    await fetch(`${base}/api/itens/${yt.id}`, { method: 'DELETE' });
+
     // QR code de conexão
     const conexao = await (await fetch(`${base}/api/conexao`)).json();
     assert.match(conexao.qrcode, /^data:image\/png;base64,/);

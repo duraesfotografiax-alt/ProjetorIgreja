@@ -10,6 +10,7 @@ import QRCode from 'qrcode';
 import { WebSocketServer } from 'ws';
 import { Biblioteca } from './biblioteca.js';
 import { PastasDosDias } from './pastas.js';
+import { lerLinkYoutube, tituloYoutube } from './youtube.js';
 import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
@@ -156,6 +157,20 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
       if (!maisRecente || mtimeMs > maisRecente.mtimeMs) maisRecente = { nome, mtimeMs };
     }
     return { url: maisRecente ? `/fundo-da-tela/${encodeURIComponent(maisRecente.nome)}?v=${Math.round(maisRecente.mtimeMs)}` : null };
+  }));
+
+  // Link do YouTube colado no celular: vira item (e entra no dia escolhido, se houver).
+  app.post('/api/youtube', rota(async (req) => {
+    const link = String(req.body?.link ?? '').trim();
+    const lido = lerLinkYoutube(link);
+    if (!lido) throw new Error('Não reconheci esse link. Use o link do vídeo ou da transmissão (ex.: youtube.com/live/...).');
+    const nome = req.body?.nome || await tituloYoutube(link);
+    const item = await biblioteca.salvarYoutube({ link, nome, ...lido });
+    itens = await biblioteca.listar();
+    const novo = adicionarAoDia(estado, req.body?.dia, [item.id]);
+    if (novo !== estado) mudarEstado(novo);
+    else transmitir();
+    return { item };
   }));
 
   app.post('/api/musicas', rota(async (req) => {

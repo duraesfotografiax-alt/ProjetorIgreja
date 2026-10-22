@@ -64,6 +64,12 @@ Pastas do Projetor/
 
 Coloque o arquivo (PDF, JPG, PNG, MP4…) na pasta do dia, copiando do pen drive ou do WhatsApp Web. Em poucos segundos ele aparece no celular, já convertido e na lista daquele dia. O arquivo original continua na pasta e não é importado de novo. Pelo celular, o botão **📁 Abrir as pastas dos dias no computador** abre essa janela no computador.
 
+## YouTube (vídeo ou ao vivo)
+
+Na aba **Arquivos**, cole o link do YouTube no campo **📺 YouTube** e toque em **▶ Mostrar no telão**. O vídeo ou a transmissão ao vivo aparece em tela cheia no telão, e o celular controla tocar, pausar e volume. Não precisa duplicar a tela nem ir até o computador. **Só guardar** salva o link no dia escolhido em "Colocar em", para usar depois.
+
+Funcionam os links de compartilhar do YouTube: `youtube.com/watch?v=…`, `youtu.be/…`, `youtube.com/live/…` e `youtube.com/shorts/…`. O computador precisa de internet, e o canal precisa permitir "incorporar" o vídeo (quase todos permitem).
+
 ## Fundo da tela
 
 Quando nada está sendo transmitido, o telão mostra o fundo de tela (um azul escuro, por padrão). Para trocar, coloque uma imagem (JPG ou PNG) na pasta `Pastas do Projetor/9 - Fundo da tela`. Vale a imagem mais recente, e o telão troca sozinho em alguns segundos.

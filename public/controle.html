@@ -32,7 +32,16 @@
     .previa .letra { color: #fff; text-align: center; white-space: pre-line; font-weight: 700; font-size: 14px;
       padding: 8px 12px; background: radial-gradient(ellipse at center, #1d2a4a 0%, #0b0f1c 75%);
       width: 100%; height: 100%; display: grid; place-items: center; }
-    .previa .icone-video { color: #fff; font-weight: 700; font-size: 18px; }
+    .previa .icone-video { color: #fff; font-weight: 700; font-size: 16px; position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0, 0, 0, .65); padding: 4px 10px; border-radius: 8px; }
+    .youtube { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 6px; padding: 12px; border: 1px solid var(--borda);
+      border-radius: 14px; background: var(--cartao); }
+    .youtube b { font-size: 15px; }
+    .youtube input { width: 100%; background: var(--fundo); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; }
+    .youtube .linha { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .youtube .linha button { padding: 10px 12px; border: 1px solid var(--borda); }
+    #erroYoutube { color: var(--perigo); font-size: 14px; }
+    #erroYoutube:empty { display: none; }
     .previa .tag { position: absolute; top: 8px; left: 8px; background: var(--perigo); color: #fff; font-size: 12px;
       font-weight: 700; padding: 2px 8px; border-radius: 6px; }
     .info { display: flex; justify-content: space-between; margin: 10px 2px; color: var(--suave); font-size: 14px; gap: 8px; }
@@ -193,6 +202,15 @@
       <input id="arquivo" type="file" accept="application/pdf,image/*,video/*" multiple hidden>
     </label>
     <div id="progresso"></div>
+    <form class="youtube" id="formYoutube">
+      <b>📺 YouTube (vídeo ou ao vivo)</b>
+      <input id="linkYoutube" type="text" inputmode="url" placeholder="Cole aqui o link do YouTube" autocomplete="off">
+      <div class="linha">
+        <button type="submit" class="botao" id="mostrarYoutube">▶ Mostrar no telão</button>
+        <button type="button" id="guardarYoutube">Só guardar</button>
+      </div>
+      <div id="erroYoutube"></div>
+    </form>
     <button class="pastas" id="abrirPastas">📁 Abrir as pastas dos dias no computador</button>
     <p class="dica">No computador, é só colocar o arquivo na pasta do dia (ex.: “3 - Quarta”). Ele aparece aqui sozinho, já convertido e na lista daquele dia.</p>
     <div class="filtro" id="filtroArquivos"></div>
@@ -223,7 +241,7 @@
     import { conectar, urlSlide } from '/conexao.js';
 
     const $ = (id) => document.getElementById(id);
-    const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬' };
+    const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺' };
     const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
     const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
     const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira',
@@ -253,9 +271,11 @@
     });
 
     const buscar = (id) => itens.find((i) => i.id === id);
-    const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : item.tipo === 'video' ? 1 : item.slides.length;
+    const ehVideo = (item) => item?.tipo === 'video' || item?.tipo === 'youtube';
+    const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehVideo(item) ? 1 : item.slides.length;
     const descricao = (item) => item.tipo === 'musica'
       ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
+      : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
       : item.tipo === 'video' ? 'Vídeo' : `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`;
     const descricaoComDias = (item) => [descricao(item), diasDoItem(item).map((d) => ABREV[d]).join(', ')].filter(Boolean).join(' · ');
     const definirCulto = (dia, lista) => enviar({ acao: 'culto', dia, itens: lista });
@@ -287,7 +307,11 @@
         div.textContent = item.estrofes[slide];
         previa.append(div);
       } else {
-        previa.innerHTML = `<span class="icone-video">${estado.video.tocando ? '🎬 Tocando' : '⏸ Pausado'}</span>`;
+        // Vídeo do YouTube mostra a capa do vídeo na prévia.
+        if (item.videoId) {
+          previa.append(Object.assign(document.createElement('img'), { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
+        }
+        previa.insertAdjacentHTML('beforeend', `<span class="icone-video">${estado.video.tocando ? '▶ Tocando' : '⏸ Pausado'}</span>`);
       }
       if (estado.telaPreta) previa.insertAdjacentHTML('beforeend', '<span class="tag">TELA PRETA</span>');
 
@@ -303,7 +327,8 @@
       $('preta').classList.toggle('ativo', estado.telaPreta);
       $('preta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
 
-      $('controlesVideo').hidden = item?.tipo !== 'video';
+      $('controlesVideo').hidden = !ehVideo(item);
+      $('reiniciar').hidden = Boolean(item?.canal); // ao vivo não volta ao início
       $('tocar').textContent = estado.video.tocando ? '⏸ Pausar' : '▶ Tocar';
       if (document.activeElement !== $('volume')) $('volume').value = estado.volume;
     }
@@ -483,6 +508,28 @@
         return b;
       }));
     }
+
+    // Link do YouTube: guarda como item (no dia escolhido em "Colocar em") e, se pedir, já mostra.
+    async function enviarYoutube(mostrar) {
+      const link = $('linkYoutube').value.trim();
+      $('erroYoutube').textContent = '';
+      if (!link) { $('erroYoutube').textContent = 'Cole o link do YouTube.'; return; }
+      $('mostrarYoutube').disabled = $('guardarYoutube').disabled = true;
+      const resposta = await fetch('/api/youtube', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link, dia: $('diaEnvio').value }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      $('mostrarYoutube').disabled = $('guardarYoutube').disabled = false;
+      if (!resposta?.ok) { $('erroYoutube').textContent = dados?.erro || 'Falha na conexão com o computador.'; return; }
+      $('linkYoutube').value = '';
+      abertos.add(`arquivos:${dados.item.id}`);
+      if (mostrar) enviar({ acao: 'abrir', id: dados.item.id });
+      desenharListas();
+    }
+    $('formYoutube').onsubmit = (e) => { e.preventDefault(); enviarYoutube(true); };
+    $('guardarYoutube').onclick = () => enviarYoutube(false);
 
     $('abrirPastas').onclick = async () => {
       const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);
