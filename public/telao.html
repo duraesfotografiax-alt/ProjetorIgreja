@@ -28,15 +28,23 @@
 
     #preta { position: fixed; inset: 0; background: #000; opacity: 0; transition: opacity .35s; pointer-events: none; }
     #preta.ligada { opacity: 1; }
-    #inicio {
-      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 24px; color: #eee; font: 500 28px/1.3 system-ui, sans-serif; text-align: center; cursor: default;
+    /* Fundo da tela: aparece quando nada está sendo transmitido (imagem da pasta "9 - Fundo da tela") */
+    #fundo {
+      position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 40%, #16306e 0%, #0a1638 55%, #040917 100%)
+        center / cover no-repeat;
+      transition: opacity .6s ease;
     }
-    #inicio[hidden] { display: none; }
-    #inicio img { width: min(40vh, 400px); border-radius: 12px; background: #fff; padding: 8px; }
-    #inicio small { color: #999; font-size: 20px; }
-    #inicio .durans { position: absolute; top: 28px; font-weight: 800; font-size: 18px; letter-spacing: .4em; color: #4f8cff; }
-    #aviso { position: fixed; bottom: 16px; left: 0; right: 0; color: #888; font-size: 16px; cursor: pointer; }
+    #fundo.escondido { opacity: 0; }
+    /* Conectar: cartão pequeno no canto, só enquanto nenhum celular está conectado (ou tecla Q) */
+    #conectar {
+      position: fixed; right: 2vw; bottom: 2vw; display: flex; align-items: center; gap: 14px; cursor: default;
+      background: rgba(0, 0, 0, .55); color: #ddd; font: 500 15px/1.35 system-ui, sans-serif;
+      padding: 12px 16px 12px 12px; border-radius: 14px; backdrop-filter: blur(6px);
+    }
+    #conectar[hidden] { display: none; }
+    #conectar img { width: 110px; height: 110px; border-radius: 8px; background: #fff; padding: 5px; }
+    #conectar small { display: block; color: #999; font-size: 13px; margin-top: 4px; }
+    #aviso { cursor: pointer; text-decoration: underline; }
     #som {
       position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, .7); color: #fff; cursor: pointer;
       font: 600 16px system-ui, sans-serif; padding: 10px 14px; border-radius: 10px;
@@ -45,18 +53,19 @@
   </style>
 </head>
 <body>
+  <div id="fundo"></div>
   <img id="a" class="camada" alt="">
   <img id="b" class="camada" alt="">
   <div id="letra"><div id="texto"></div></div>
   <video id="video" class="camada" playsinline preload="auto"></video>
   <div id="preta"></div>
 
-  <div id="inicio">
-    <div class="durans">DURANS</div>
-    <div>Aponte a câmera do celular para controlar o telão</div>
+  <div id="conectar" hidden>
     <img id="qrcode" alt="QR code para conectar o celular">
-    <small id="url"></small>
-    <div id="aviso">Clique aqui ou aperte F11 para tela cheia</div>
+    <div>Aponte a câmera do celular<br>para controlar o telão
+      <small id="url"></small>
+      <small id="aviso">Tela cheia: clique aqui ou F11 · Q mostra/esconde</small>
+    </div>
   </div>
   <div id="som" hidden>🔇 Clique aqui para liberar o som do vídeo</div>
 
@@ -75,6 +84,20 @@
       $('qrcode').src = qrcode;
       $('url').textContent = url;
     });
+
+    // Fundo da tela: confere de vez em quando se colocaram uma imagem nova na pasta.
+    let fundoAtual = null;
+    async function carregarFundo() {
+      try {
+        const { url } = await (await fetch('/api/fundo')).json();
+        if (url === fundoAtual) return;
+        fundoAtual = url;
+        $('fundo').style.backgroundImage = url ? `url("${url}")` : '';
+      } catch {}
+    }
+    carregarFundo();
+    setInterval(carregarFundo, 15000);
+    let qrForcado = false; // tecla Q
 
     // Slides: troca com transição suave, carrega por trás e depois mostra.
     function mostrarImagem(src) {
@@ -147,11 +170,13 @@
     }
 
     const enviar = conectar({
-      aoReceberEstado(estado, itens) {
-        ultimo = { estado, itens };
+      papel: 'telao',
+      aoReceberEstado(estado, itens, { controles }) {
+        ultimo = { estado, itens, controles };
         const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
         const slide = estado.atual?.slide ?? 0;
-        $('inicio').hidden = Boolean(item);
+        $('fundo').classList.toggle('escondido', Boolean(item));
+        mostrarConectar();
         $('preta').classList.toggle('ligada', estado.telaPreta);
         mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
         mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide] : null);
@@ -164,7 +189,13 @@
     video.onended = () => enviar({ acao: 'video', comando: 'pausar' });
 
     // Teclado do computador também funciona (setas, espaço, B para tela preta).
+    function mostrarConectar() {
+      const item = ultimo.estado?.atual && ultimo.itens.find((i) => i.id === ultimo.estado.atual.id);
+      $('conectar').hidden = !(qrForcado || (!item && !ultimo.controles));
+    }
+
     document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'q') { qrForcado = !qrForcado; mostrarConectar(); }
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) enviar({ acao: 'proximo' });
       if (['ArrowLeft', 'PageUp'].includes(e.key)) enviar({ acao: 'anterior' });
       if (e.key.toLowerCase() === 'b') enviar({ acao: 'telaPreta', ligada: !ultimo.estado?.telaPreta });

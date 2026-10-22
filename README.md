@@ -64,6 +64,12 @@ Pastas do Projetor/
 
 Coloque o arquivo (PDF, JPG, PNG, MP4…) na pasta do dia, copiando do pen drive ou do WhatsApp Web. Em poucos segundos ele aparece no celular, já convertido e na lista daquele dia. O arquivo original continua na pasta e não é importado de novo. Pelo celular, o botão **📁 Abrir as pastas dos dias no computador** abre essa janela no computador.
 
+## Fundo da tela
+
+Quando nada está sendo transmitido, o telão mostra o fundo de tela (um azul escuro, por padrão). Para trocar, coloque uma imagem (JPG ou PNG) na pasta `Pastas do Projetor/9 - Fundo da tela`. Vale a imagem mais recente, e o telão troca sozinho em alguns segundos.
+
+O QR code para conectar fica pequeno no canto e só aparece enquanto nenhum celular está conectado. A tecla **Q** no computador mostra ou esconde o QR, para conectar outro celular.
+
 ## Onde ficam os arquivos
 
 **Nada some ao fechar o programa ou desligar o computador.** Tudo fica na pasta `biblioteca/`, um subdiretório por item. Os slides ficam numerados (`001.jpg`, `002.jpg`, …), e as músicas e os vídeos ficam em suas próprias pastas. As listas de cada dia ficam salvas em `biblioteca/cultos.json` e continuam lá quando você fecha e abre o programa.

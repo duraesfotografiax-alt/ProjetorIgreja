@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -40,7 +40,9 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   await mkdir(pastaEnvios, { recursive: true });
   const upload = multer({ dest: pastaEnvios, limits: { fileSize: LIMITE_ARQUIVO } });
 
-  const pacote = () => JSON.stringify({ tipo: 'estado', estado, itens });
+  // Quantos celulares estão conectados (o telão esconde o QR code quando há algum).
+  const controles = () => [...wss.clients].filter((c) => c.papel === 'controle' && c.readyState === 1).length;
+  const pacote = () => JSON.stringify({ tipo: 'estado', estado, itens, controles: controles() });
   const transmitir = () => {
     const msg = pacote();
     for (const cliente of wss.clients) if (cliente.readyState === 1) cliente.send(msg);
@@ -71,8 +73,14 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
     socket.on('message', (dados) => {
       let comando;
       try { comando = JSON.parse(dados); } catch { return; }
+      if (comando?.acao === 'ola') {
+        socket.papel = comando.papel === 'telao' ? 'telao' : 'controle';
+        transmitir();
+        return;
+      }
       mudarEstado(aplicarComando(estado, comando, itens));
     });
+    socket.on('close', () => { if (socket.papel === 'controle') transmitir(); });
   });
 
   app.get('/', (_req, res) => res.redirect('/controle.html'));
@@ -131,6 +139,23 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
       : process.platform === 'darwin' ? ['open', [pastaDias]] : ['xdg-open', [pastaDias]];
     spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
     return { ok: true };
+  }));
+
+  // Fundo da tela: a imagem mais recente da pasta "9 - Fundo da tela" (ou nenhuma).
+  const pastaFundo = pastaDias ? path.join(pastaDias, '9 - Fundo da tela') : null;
+  if (pastaFundo) {
+    await mkdir(pastaFundo, { recursive: true });
+    app.use('/fundo-da-tela', express.static(pastaFundo));
+  }
+  app.get('/api/fundo', rota(async () => {
+    if (!pastaFundo) return { url: null };
+    let maisRecente = null;
+    for (const nome of await readdir(pastaFundo)) {
+      if (!/\.(jpe?g|png|webp)$/i.test(nome)) continue;
+      const { mtimeMs } = await stat(path.join(pastaFundo, nome));
+      if (!maisRecente || mtimeMs > maisRecente.mtimeMs) maisRecente = { nome, mtimeMs };
+    }
+    return { url: maisRecente ? `/fundo-da-tela/${encodeURIComponent(maisRecente.nome)}?v=${Math.round(maisRecente.mtimeMs)}` : null };
   }));
 
   app.post('/api/musicas', rota(async (req) => {

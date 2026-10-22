@@ -1,5 +1,5 @@
 // Conexão em tempo real com o computador. Reconecta sozinha se o Wi-Fi cair.
-export function conectar({ aoReceberEstado, aoMudarConexao }) {
+export function conectar({ aoReceberEstado, aoMudarConexao, papel = 'controle' }) {
   let socket;
   let fila = [];
 
@@ -7,13 +7,14 @@ export function conectar({ aoReceberEstado, aoMudarConexao }) {
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
     socket = new WebSocket(`${protocolo}://${location.host}/ws`);
     socket.onopen = () => {
+      socket.send(JSON.stringify({ acao: 'ola', papel }));
       aoMudarConexao?.(true);
       fila.forEach((m) => socket.send(m));
       fila = [];
     };
     socket.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      if (msg.tipo === 'estado') aoReceberEstado(msg.estado, msg.itens);
+      if (msg.tipo === 'estado') aoReceberEstado(msg.estado, msg.itens, { controles: msg.controles });
     };
     socket.onclose = () => {
       aoMudarConexao?.(false);

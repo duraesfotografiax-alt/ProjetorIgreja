@@ -122,7 +122,7 @@
     .dica { font-size: 13px; color: var(--suave); margin: 4px 2px 12px; }
     /* Marca */
     .marca { display: flex; flex-direction: column; }
-    .durans { font: 800 12px/1 system-ui, sans-serif; letter-spacing: .35em; color: var(--destaque); margin-bottom: 4px; }
+    .assinatura { text-align: center; color: var(--borda); font-size: 12px; letter-spacing: .08em; margin-top: 28px; }
     .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
 
     /* Editor de música */
@@ -142,7 +142,7 @@
 </head>
 <body>
   <header>
-    <div class="marca"><span class="durans">DURANS</span><h1>Controle do Telão</h1></div>
+    <h1>Controle do Telão</h1>
     <span id="status">Conectando…</span>
   </header>
 
@@ -198,6 +198,8 @@
     <div class="filtro" id="filtroArquivos"></div>
     <div class="lista" id="listaArquivos"></div>
   </section>
+
+  <p class="assinatura">Durães</p>
 
   <dialog id="editor">
     <form method="dialog" id="formMusica">
