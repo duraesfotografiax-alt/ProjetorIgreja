@@ -1,5 +1,5 @@
 // Estado do que está no telão e os comandos que o celular pode enviar.
-import { totalPartes } from './biblioteca.js';
+import { totalPartes, ehMidia } from './biblioteca.js';
 
 // Uma lista de culto para cada dia da semana, de segunda a domingo.
 export const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
@@ -62,7 +62,7 @@ export function aplicarComando(estado, comando, itens) {
     case 'fechar':
       return { ...estado, atual: null, video: { ...estado.video, tocando: false } };
     case 'video': {
-      if (!['video', 'youtube', 'audio', 'tela'].includes(atual?.tipo)) return estado;
+      if (!ehMidia(atual?.tipo)) return estado;
       if (comando.comando === 'tocar') return { ...estado, video: { ...estado.video, tocando: true } };
       if (comando.comando === 'pausar') return { ...estado, video: { ...estado.video, tocando: false } };
       if (comando.comando === 'reiniciar') return { ...estado, video: { tocando: true, reinicio: estado.video.reinicio + 1 } };
@@ -97,7 +97,7 @@ function abrir(estado, item, slide, dia) {
     telaPreta: false,
   };
   // Vídeo começa a tocar do início assim que vai para o telão.
-  if (['video', 'youtube', 'audio', 'tela'].includes(item.tipo)) novo.video = { tocando: true, reinicio: estado.video.reinicio + 1 };
+  if (ehMidia(item.tipo)) novo.video = { tocando: true, reinicio: estado.video.reinicio + 1 };
   else novo.video = { ...estado.video, tocando: false };
   return novo;
 }

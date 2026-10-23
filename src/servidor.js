@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
@@ -11,6 +10,8 @@ import { WebSocketServer } from 'ws';
 import { Biblioteca } from './biblioteca.js';
 import { PastasDosDias } from './pastas.js';
 import { lerLinkYoutube, tituloYoutube } from './youtube.js';
+import { lerLinkSite, tituloSite } from './site.js';
+import { abrirLink as abrirLinkReal, abrirPasta } from './abrir.js';
 import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
@@ -28,7 +29,7 @@ export function enderecoNaRede() {
 // Item fixo (não é arquivo): mostra no telão uma aba ou janela do computador.
 const ITEM_TELA = { id: 'tela', tipo: 'tela', nome: 'Tela do computador', criadaEm: '' };
 
-export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas }) {
+export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas, abrirLink = abrirLinkReal }) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
   const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
   const listarTudo = async () => [ITEM_TELA, ...await biblioteca.listar()];
@@ -54,6 +55,9 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   };
   const mudarEstado = (novo) => {
     if (novo === estado) return;
+    // Item de site (Univer etc.) indo para o telão: abre a página no computador, para ser escolhida na captura.
+    const noAr = novo.atual && itens.find((i) => i.id === novo.atual.id);
+    if (noAr?.tipo === 'site' && novo.atual.id !== estado.atual?.id) abrirLink(noAr.link);
     if (novo.cultos !== estado.cultos) writeFile(arquivoCultos, JSON.stringify(novo.cultos, null, 2)).catch(() => {});
     estado = novo;
     transmitir();
@@ -107,8 +111,12 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   };
 
   app.get('/api/conexao', rota(async () => {
-    const url = `http://${enderecoNaRede()}:${servidor.address().port}/`;
-    return { url, qrcode: await QRCode.toDataURL(url, { margin: 1, width: 400 }) };
+    const porta = servidor.address().port;
+    const url = `http://${enderecoNaRede()}:${porta}/`;
+    // Nome do computador na rede (iPhone costuma achar por ele mesmo se o número mudar).
+    const nome = os.hostname().split('.')[0];
+    const urlNome = /^[A-Za-z0-9-]+$/.test(nome) ? `http://${nome.toLowerCase()}.local:${porta}/` : null;
+    return { url, urlNome, qrcode: await QRCode.toDataURL(url, { margin: 1, width: 400 }) };
   }));
 
   app.post('/api/enviar', upload.array('arquivos', 200), rota(async (req) => {
@@ -144,9 +152,7 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   // Abre a janela das pastas dos dias no computador (Explorador de Arquivos / Finder).
   app.post('/api/abrir-pastas', rota(async () => {
     if (!pastaDias) throw new Error('Pastas dos dias desligadas.');
-    const [cmd, args] = process.platform === 'win32' ? ['explorer', [pastaDias]]
-      : process.platform === 'darwin' ? ['open', [pastaDias]] : ['xdg-open', [pastaDias]];
-    spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+    abrirPasta(pastaDias);
     return { ok: true };
   }));
 
@@ -167,7 +173,35 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
     return { url: maisRecente ? `/fundo-da-tela/${encodeURIComponent(maisRecente.nome)}?v=${Math.round(maisRecente.mtimeMs)}` : null };
   }));
 
-  // Link do YouTube colado no celular: vira item (e entra no dia escolhido, se houver).
+  // Link colado no celular: YouTube vira item de YouTube; qualquer outro endereço (Univer etc.) vira item de site.
+  app.post('/api/link', rota(async (req) => {
+    const bruto = String(req.body?.link ?? '').trim();
+    if (!bruto) throw new Error('Cole um link.');
+    const youtube = lerLinkYoutube(bruto);
+    let item;
+    if (youtube) {
+      item = await biblioteca.salvarYoutube({ link: bruto, nome: req.body?.nome || await tituloYoutube(bruto), ...youtube });
+    } else {
+      const link = lerLinkSite(bruto);
+      if (!link) throw new Error('Não entendi esse link. Cole o endereço completo da página.');
+      item = await biblioteca.salvarSite({ link, nome: req.body?.nome || await tituloSite(link) });
+    }
+    itens = await listarTudo();
+    const novo = adicionarAoDia(estado, req.body?.dia, [item.id]);
+    if (novo !== estado) mudarEstado(novo);
+    else transmitir();
+    return { item };
+  }));
+
+  // Abre de novo, no computador, a página de um item de site (se a janela foi fechada).
+  app.post('/api/itens/:id/abrir-no-computador', rota(async (req) => {
+    const item = itens.find((i) => i.id === req.params.id);
+    if (item?.tipo !== 'site') throw new Error('Este item não é um site.');
+    abrirLink(item.link);
+    return { ok: true };
+  }));
+
+  // (versão antiga, só YouTube) mantida para quem já usa.
   app.post('/api/youtube', rota(async (req) => {
     const link = String(req.body?.link ?? '').trim();
     const lido = lerLinkYoutube(link);

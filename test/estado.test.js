@@ -166,3 +166,13 @@ test('áudio começa a tocar ao abrir e aceita pausar e volume', () => {
   e = aplicarComando(e, { acao: 'volume', valor: 0.5 }, lista);
   assert.equal(e.volume, 0.5);
 });
+
+test('site (Univer) é mídia: começa a tocar, aceita silenciar e volume', () => {
+  const lista = [...itens, { id: 'univer', tipo: 'site', link: 'https://univervideo.com/x' }];
+  let e = aplicarComando(estadoInicial(), { acao: 'abrir', id: 'univer' }, lista);
+  assert.equal(e.video.tocando, true);
+  e = aplicarComando(e, { acao: 'video', comando: 'pausar' }, lista);
+  assert.equal(e.video.tocando, false);
+  e = aplicarComando(e, { acao: 'volume', valor: 0.2 }, lista);
+  assert.equal(e.volume, 0.2);
+});

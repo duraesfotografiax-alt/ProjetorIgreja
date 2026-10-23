@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#14110f">
-  <title>Controle do Telão</title>
+  <meta name="theme-color" content="#0e0b09">
+  <title>Telão Durães</title>
   <!-- Ícone na tela inicial do celular (abre como aplicativo) -->
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/icones/icone-192.png">
@@ -14,785 +14,833 @@
   <meta name="apple-mobile-web-app-title" content="Telão">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
+    /* Padrão Durães: preto quente, branco, laranja do play e a faixa dourada. Botões grandes, pouca coisa na tela. */
     :root {
-      --fundo: #14110f; --cartao: #1f1a17; --borda: #372e28; --texto: #f4efe9; --suave: #b5a99b;
-      --destaque: #e85a00; --perigo: #ee4b55; --ok: #30a46c;
+      --fundo: #0e0b09; --c1: #181411; --c2: #221c17; --linha: #302822;
+      --texto: #f6f1ea; --suave: #a89c8f;
+      --laranja: #eb5b02; --ouro: #f3b757; --vivo: #ff3b4a; --ok: #34c38a;
       --faixa: linear-gradient(90deg, #c43b07, #d9702c 25%, #f3b757 50%, #e99d49 75%, #c23603);
+      color-scheme: dark;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.4 system-ui, sans-serif;
-      padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; justify-content: space-between; padding: calc(14px + env(safe-area-inset-top)) 0 14px; }
-    .topo-direita { display: flex; align-items: center; gap: 10px; }
-    .celulares { width: 38px; height: 38px; border: 1px solid var(--borda); font-size: 18px; }
-    #celulares .qr { display: block; width: min(240px, 70vw); margin: 4px auto 6px; border-radius: 12px; background: #fff; padding: 8px; }
-    #celulares .endereco { text-align: center; color: var(--suave); font-size: 13px; word-break: break-all; }
-    #celulares h3 { font-size: 15px; margin: 18px 0 6px; }
-    #celulares ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
-    #celulares .contagem { text-align: center; font-size: 14px; margin: 0 0 8px; }
-    #celulares .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-    #celulares .botoes button { padding: 10px; border: 1px solid var(--borda); }
-    #celulares .botoes button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
-    #instalarAgora[hidden] { display: none; }
-    h1 { font-size: 18px; margin: 0; }
-    #status { font-size: 13px; color: var(--suave); display: flex; align-items: center; gap: 6px; }
-    #status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--perigo); }
-    #status.on::before { background: var(--ok); }
-    button, input, textarea { font: inherit; color: inherit; }
-    button { border: 0; border-radius: 12px; cursor: pointer; background: none; }
-    button:disabled { opacity: .4; }
+    html, body { height: 100%; margin: 0; background: var(--fundo); color: var(--texto);
+      font: 17px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { border: 0; background: none; cursor: pointer; border-radius: 14px; touch-action: manipulation; }
+    button:disabled { opacity: .35; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-    /* Ao vivo */
-    .ao-vivo { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; padding: 12px;
-      position: sticky; top: 0; z-index: 2; }
-    .previa { aspect-ratio: 16/9; height: min(24vh, calc((100vw - 58px) * 9 / 16)); margin: 0 auto;
-      background: #000; border-radius: 10px; overflow: hidden; display: grid; place-items: center; position: relative; }
-    .previa img { width: 100%; height: 100%; object-fit: contain; }
-    .previa .vazio { color: var(--suave); font-size: 14px; }
-    .previa .letra { color: #fff; text-align: center; white-space: pre-line; font-weight: 700; font-size: 14px;
-      padding: 8px 12px; background: radial-gradient(ellipse at center, #1d2a4a 0%, #0b0f1c 75%);
-      width: 100%; height: 100%; display: grid; place-items: center; }
-    .previa .icone-video { color: #fff; font-weight: 700; font-size: 16px; position: absolute; bottom: 8px; right: 8px;
-      background: rgba(0, 0, 0, .65); padding: 4px 10px; border-radius: 8px; }
-    .youtube { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 6px; padding: 12px; border: 1px solid var(--borda);
-      border-radius: 14px; background: var(--cartao); }
-    .youtube b { font-size: 15px; }
-    .youtube input { width: 100%; background: var(--fundo); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; }
-    .youtube .linha { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-    .youtube .linha button { padding: 10px 12px; border: 1px solid var(--borda); }
-    #erroYoutube { color: var(--perigo); font-size: 14px; }
-    #erroYoutube:empty { display: none; }
-    .previa .tag { position: absolute; top: 8px; left: 8px; background: var(--perigo); color: #fff; font-size: 12px;
-      font-weight: 700; padding: 2px 8px; border-radius: 6px; }
-    .info { display: flex; justify-content: space-between; margin: 10px 2px; color: var(--suave); font-size: 14px; gap: 8px; }
-    .info b { color: var(--texto); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .navegar { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
-    .navegar button { padding: 18px 0; font-size: 20px; font-weight: 700; background: var(--borda); }
-    .navegar .prox { background: var(--destaque); color: #fff; }
-    .controles-video { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-top: 10px; }
-    .controles-video[hidden] { display: none; }
-    .controles-video button { padding: 12px; background: var(--ok); color: #fff; font-weight: 700; }
-    .controles-video button.secundario { background: var(--borda); color: var(--texto); }
-    .controles-video label { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--suave); }
-    .controles-video input { flex: 1; accent-color: var(--destaque); }
-    .extras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-    .extras button { padding: 10px; border: 1px solid var(--borda); font-size: 15px; }
-    .extras button.ativo { background: var(--perigo); border-color: var(--perigo); color: #fff; }
+    #app { height: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; }
 
-    /* Abas */
-    .abas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 18px 0 12px;
-      background: var(--cartao); border-radius: 12px; padding: 4px; }
-    .abas button { padding: 10px 0; font-weight: 600; color: var(--suave); border-radius: 9px; }
-    .abas button.ativa { background: var(--borda); color: var(--texto); }
-    .painel[hidden] { display: none; }
+    /* ---------- Topo ---------- */
+    .topo { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+    .marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .marca img { height: 30px; width: auto; }
+    .marca b { font: 700 18px/1 Georgia, 'Times New Roman', serif; letter-spacing: .16em; }
+    .conexao { display: flex; align-items: center; gap: 10px; }
+    #status { width: 10px; height: 10px; border-radius: 50%; background: var(--vivo); }
+    #status.on { background: var(--ok); }
+    .btn-icone { width: 46px; height: 46px; display: grid; place-items: center; background: var(--c2); }
+    .faixa { height: 3px; background: var(--faixa); opacity: .9; }
 
-    .barra { display: flex; gap: 8px; margin-bottom: 10px; }
-    .barra input { flex: 1; min-width: 0; background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; }
-    .botao { padding: 10px 14px; background: var(--destaque); color: #fff; font-weight: 600; white-space: nowrap; }
-    .enviar { display: block; width: 100%; padding: 16px; background: var(--cartao); border: 2px dashed var(--borda);
-      border-radius: 14px; text-align: center; font-weight: 600; cursor: pointer; }
-    .enviar small { display: block; color: var(--suave); font-weight: 400; margin-top: 2px; }
-    #progresso { margin: 8px 0 12px; font-size: 14px; color: var(--suave); min-height: 20px; }
-    #progresso.erro { color: var(--perigo); }
+    /* ---------- Ao vivo (sempre visível) ---------- */
+    .vivo { background: var(--c1); padding: 12px 14px 12px; border-bottom: 1px solid var(--linha); }
+    .vivo-topo { display: flex; align-items: center; gap: 12px; }
+    .previa { position: relative; flex: none; width: 44%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px;
+      overflow: hidden; display: grid; place-items: center; }
+    .previa img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .previa .letra { width: 100%; height: 100%; display: grid; place-items: center; text-align: center; white-space: pre-line;
+      font-weight: 700; font-size: 11px; line-height: 1.25; padding: 6px 8px; background: radial-gradient(ellipse at center, #1f4fd1, #0a1d5e 70%); }
+    .previa .vazio { color: var(--suave); font-size: 13px; text-align: center; padding: 6px; }
+    .previa .grande { font-size: 34px; }
+    .previa .pret { position: absolute; inset: 0; background: #000; display: grid; place-items: center; font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--suave); }
+    .vivo-info { min-width: 0; flex: 1; }
+    .vivo-info small { display: block; font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--suave); }
+    .vivo-info.no-ar small { color: var(--vivo); }
+    .vivo-info b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 19px; line-height: 1.2; margin: 2px 0; }
+    .vivo-info span { display: block; color: var(--suave); font-size: 14px; }
+    .vivo.sem-previa .previa { display: none; }
 
-    /* Itens */
+    .passos { display: grid; grid-template-columns: 1fr 1.8fr; gap: 10px; margin-top: 12px; }
+    .passos button { height: 62px; font-size: 20px; font-weight: 700; background: var(--c2); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .passos .avancar { background: var(--laranja); color: #fff; }
+
+    .barra-midia { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .barra-midia .principal { height: 52px; padding: 0 18px; background: var(--ok); color: #04150e; font-weight: 700; flex: none; }
+    .barra-midia .secundario { height: 52px; width: 52px; background: var(--c2); flex: none; font-size: 20px; }
+    .barra-midia label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: var(--suave); }
+    .barra-midia input[type=range] { flex: 1; min-width: 0; accent-color: var(--laranja); height: 36px; }
+    .dica-vivo { margin-top: 10px; font-size: 14px; color: var(--ouro); background: rgba(243, 183, 87, .1); border-radius: 12px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+    .dica-vivo button { flex: none; padding: 8px 12px; background: var(--c2); color: var(--texto); font-size: 14px; font-weight: 600; }
+
+    .atalhos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .atalhos button { height: 46px; font-size: 13px; font-weight: 600; border: 1px solid var(--linha); color: var(--suave); white-space: nowrap; padding: 0 4px; }
+    .vivo.sem-previa .vivo-info small { display: none; }
+    .vivo.sem-previa .vivo-info b { -webkit-line-clamp: 1; }
+    /* Celulares de tela baixa (iPhone SE etc.): painel de cima mais compacto, para sobrar espaço para a lista */
+    @media (max-height: 720px) {
+      .topo { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+      .vivo { padding: 8px 12px 10px; }
+      .previa { width: 38%; }
+      .vivo-info b { font-size: 17px; }
+      .passos { margin-top: 8px; }
+      .passos button { height: 54px; font-size: 19px; }
+      .barra-midia { margin-top: 8px; }
+      .barra-midia .principal, .barra-midia .secundario { height: 46px; }
+      .atalhos { margin-top: 8px; }
+      .atalhos button { height: 40px; }
+      .dica-vivo { margin-top: 8px; padding: 8px 10px; font-size: 13px; }
+    }
+    .atalhos button.ligado { background: var(--vivo); border-color: var(--vivo); color: #fff; }
+
+    /* ---------- Conteúdo ---------- */
+    .conteudo { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 14px 28px; }
+    .dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .dias button { height: 48px; border: 1px solid var(--linha); font-weight: 700; font-size: 15px; color: var(--suave); position: relative; padding: 0; min-width: 0; }
+    .dias button.ativo { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .dias button.hoje::after { content: ''; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 12px; }
+    .titulo h2 { margin: 0; font-size: 24px; }
+    .titulo h2 small { color: var(--ok); font-size: 14px; font-weight: 700; margin-left: 8px; }
+    .titulo p { margin: 2px 0 0; color: var(--suave); font-size: 14px; }
+
     .lista { display: flex; flex-direction: column; gap: 10px; }
-    .item { background: var(--cartao); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
-    .item.no-telao { border-color: var(--destaque); }
-    .item-topo { display: flex; align-items: center; gap: 10px; padding: 10px; }
-    .item-abrir { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; padding: 0; }
-    .capa { width: 64px; aspect-ratio: 16/9; border-radius: 6px; background: #000; flex: none; object-fit: cover;
-      display: grid; place-items: center; font-size: 20px; }
-    .item-abrir div { min-width: 0; flex: 1; }
-    .item-abrir b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .item-abrir span { display: block; color: var(--suave); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .mini { width: 36px; height: 36px; border: 1px solid var(--borda); border-radius: 10px; flex: none; font-size: 15px; }
-    .partes { padding: 0 10px 10px; }
-    .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .miniaturas button { padding: 0; position: relative; border-radius: 6px; overflow: hidden; background: #000; border: 2px solid transparent; }
-    .miniaturas img { width: 100%; aspect-ratio: 16/9; object-fit: contain; display: block; }
-    .miniaturas span { position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #000; }
-    .estrofes { display: flex; flex-direction: column; gap: 6px; }
-    .estrofes button { text-align: left; white-space: pre-line; padding: 10px 12px; background: var(--fundo);
-      border: 2px solid transparent; font-size: 14px; line-height: 1.35; }
-    .atual { border-color: var(--destaque) !important; }
-    .tocar-video { width: 100%; padding: 12px; background: var(--fundo); border: 2px solid transparent; font-weight: 600; }
-    .acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 10px; }
-    .acoes button { padding: 8px 12px; border: 1px solid var(--borda); font-size: 14px; }
-    .acoes .perigo { color: var(--perigo); }
-    .acoes .feito { color: var(--ok); }
-    /* Dias da semana */
-    .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .dias button { padding: 8px 0; border: 1px solid var(--borda); border-radius: 9px; font-size: 13px; font-weight: 600;
-      color: var(--suave); position: relative; }
-    .dias button.ativo { background: var(--destaque); border-color: var(--destaque); color: #fff; }
-    .dias button.hoje::after { content: ''; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px;
-      border-radius: 50%; background: var(--ok); }
-    .titulo-dia { display: flex; align-items: center; justify-content: space-between; margin: 12px 2px 10px; }
-    .titulo-dia b { font-size: 17px; }
-    .titulo-dia small { color: var(--ok); font-weight: 600; margin-left: 6px; }
-    .titulo-dia button { padding: 6px 10px; border: 1px solid var(--borda); font-size: 13px; color: var(--suave); }
-    .em-dias { margin-top: 10px; }
-    .em-dias > span { display: block; font-size: 13px; color: var(--suave); margin-bottom: 6px; }
-    .colocar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; color: var(--suave); }
-    .colocar select { flex: 1; font: inherit; color: var(--texto); background: var(--cartao); border: 1px solid var(--borda);
-      border-radius: 10px; padding: 8px; }
-    /* Copiar slides */
-    .miniaturas button.selecionado { border-color: var(--ok); }
-    .miniaturas button.selecionado::after { content: '✓'; position: absolute; top: 2px; left: 4px; color: #fff;
-      background: var(--ok); border-radius: 50%; width: 18px; height: 18px; font-size: 12px; line-height: 18px; }
-    .copiar { margin-top: 10px; padding: 10px; border: 1px dashed var(--ok); border-radius: 12px; }
-    .copiar p { margin: 0 0 8px; font-size: 14px; color: var(--suave); }
-    .copiar .rodape { margin-top: 10px; }
-    .filtro { display: flex; gap: 6px; overflow-x: auto; margin: 4px 0 10px; padding-bottom: 2px; }
-    .filtro button { flex: none; padding: 6px 12px; border: 1px solid var(--borda); border-radius: 999px; font-size: 13px; color: var(--suave); }
-    .filtro button.ativo { background: var(--borda); color: var(--texto); }
-    .pastas { width: 100%; margin: 4px 0 2px; padding: 10px; border: 1px solid var(--borda); font-size: 14px; }
-    .dica { font-size: 13px; color: var(--suave); margin: 4px 2px 12px; }
-    /* Marca */
-    .marca { display: flex; flex-direction: column; }
-    .faixa { height: 3px; border-radius: 2px; background: var(--faixa); opacity: .85; margin-bottom: 12px; }
-    .credito { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 40px 0 8px; color: var(--suave); font-size: 12px; opacity: .8; }
-    .credito img { height: 38px; width: auto; }
-    .credito b { font: 700 13px/1 Georgia, 'Times New Roman', serif; letter-spacing: .22em; text-transform: uppercase; color: var(--texto); }
-    .credito.pequeno { flex-direction: row; justify-content: center; gap: 8px; margin: 18px 0 0; }
-    .credito.pequeno img { height: 24px; }
-    .nada { color: var(--suave); text-align: center; padding: 20px; font-size: 14px; }
+    .linha { background: var(--c1); border: 1px solid var(--linha); border-radius: 18px; overflow: hidden; }
+    .linha.no-ar { border-color: var(--laranja); box-shadow: inset 0 0 0 1px var(--laranja); }
+    .linha-topo { display: flex; align-items: center; gap: 6px; padding: 10px 8px 10px 10px; }
+    .corpo { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; padding: 0; }
+    .capa { width: 84px; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; flex: none; overflow: hidden; display: grid; place-items: center; font-size: 24px; }
+    .capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .capa.musica { background: linear-gradient(135deg, #1f4fd1, #0a1d5e); }
+    .textos { min-width: 0; flex: 1; }
+    .textos b { display: block; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .textos span { display: block; color: var(--suave); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .textos .tag-ar { color: var(--vivo); font-weight: 800; }
+    .tocar { width: 52px; height: 52px; border-radius: 50%; background: var(--laranja); color: #fff; display: grid; place-items: center; flex: none; }
+    .tocar svg { fill: currentColor; stroke: none; width: 22px; height: 22px; margin-left: 3px; }
+    .mais { width: 40px; height: 52px; color: var(--suave); display: grid; place-items: center; flex: none; }
+    .mais svg { fill: currentColor; stroke: none; }
+    .partes { padding: 0 10px 12px; }
+    .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .mini { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; border: 2px solid transparent; padding: 0; }
+    .mini.atual { border-color: var(--laranja); }
+    .mini.marcado { border-color: var(--ok); }
+    .mini.marcado::after { content: '✓'; position: absolute; top: 3px; left: 4px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: var(--ok); color: #04150e; font-size: 13px; font-weight: 800; }
+    .mini img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .mini span { position: absolute; right: 5px; bottom: 3px; font-size: 12px; font-weight: 800; text-shadow: 0 0 4px #000; }
+    .estrofe { display: block; width: 100%; text-align: left; white-space: pre-line; padding: 12px 14px; background: var(--c2); border: 2px solid transparent; border-radius: 12px; margin-bottom: 8px; font-size: 16px; }
+    .estrofe.atual { border-color: var(--laranja); }
 
-    /* Editor de música */
-    dialog { width: min(100% - 24px, 560px); max-height: calc(100% - 24px); background: var(--cartao); color: var(--texto);
-      border: 1px solid var(--borda); border-radius: 16px; padding: 16px; }
-    dialog::backdrop { background: rgba(0, 0, 0, .6); }
-    dialog h2 { margin: 0 0 12px; font-size: 18px; }
-    dialog label { display: block; font-size: 14px; color: var(--suave); margin: 10px 0 4px; }
-    dialog input, dialog textarea { width: 100%; background: var(--fundo); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; }
-    dialog textarea { min-height: 45vh; resize: vertical; line-height: 1.4; }
-    dialog small { display: block; color: var(--suave); font-size: 13px; margin-top: 4px; }
-    #erroMusica { color: var(--perigo); font-size: 14px; min-height: 20px; margin-top: 8px; }
-    .rodape { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
-    .rodape button { padding: 10px 16px; border: 1px solid var(--borda); }
-    .rodape .botao { border: 0; }
+    .vazio-grande { text-align: center; padding: 34px 18px; color: var(--suave); border: 1px dashed var(--linha); border-radius: 18px; }
+    .vazio-grande p { margin: 0 0 16px; }
+    .busca input { width: 100%; }
+    .filtro { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+    .filtro::-webkit-scrollbar { display: none; }
+    .filtro button { flex: none; height: 42px; padding: 0 16px; border: 1px solid var(--linha); border-radius: 999px; font-weight: 600; color: var(--suave); font-size: 15px; }
+    .filtro button.ativo { background: var(--texto); border-color: var(--texto); color: var(--fundo); }
+    .link-pastas { width: 100%; margin-top: 16px; height: 50px; border: 1px solid var(--linha); color: var(--suave); font-size: 15px; }
+    .credito { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 28px 0 4px; color: var(--suave); font-size: 12px; opacity: .8; }
+    .credito img { height: 24px; width: auto; }
+    .credito b { font: 700 12px/1 Georgia, 'Times New Roman', serif; letter-spacing: .2em; color: var(--texto); }
+
+    /* ---------- Barra de baixo ---------- */
+    .nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--c1); border-top: 1px solid var(--linha); padding-bottom: env(safe-area-inset-bottom); }
+    .nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 64px; font-size: 12px; font-weight: 600; color: var(--suave); border-radius: 0; }
+    .nav button.ativa { color: var(--laranja); }
+    .nav .adicionar span.bola { width: 52px; height: 52px; border-radius: 50%; background: var(--laranja); color: #fff; display: grid; place-items: center; margin-top: -22px; box-shadow: 0 6px 18px rgba(235, 91, 2, .45); }
+    .nav .adicionar { color: var(--texto); }
+
+    /* ---------- Aviso (mensagens e progresso) ---------- */
+    .aviso { position: fixed; left: 14px; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); max-width: 612px; margin: 0 auto; z-index: 50;
+      background: var(--texto); color: var(--fundo); border-radius: 14px; padding: 12px 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+    .aviso.erro { background: var(--vivo); color: #fff; }
+    .aviso i { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: var(--laranja); }
+
+    /* ---------- Folha (menus e formulários que sobem de baixo) ---------- */
+    dialog#folha { border: 0; padding: 0; background: var(--c1); color: var(--texto); width: 100%; max-width: 640px; max-height: 92dvh;
+      margin: auto auto 0; border-radius: 26px 26px 0 0; overflow: auto; }
+    dialog#folha::backdrop { background: rgba(0, 0, 0, .68); }
+    .folha-in { padding: 18px 16px calc(22px + env(safe-area-inset-bottom)); }
+    .folha-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .folha-topo h3 { margin: 0; font-size: 21px; }
+    .fechar { width: 46px; height: 46px; background: var(--c2); font-size: 18px; flex: none; }
+    .opcao { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; background: var(--c2); border-radius: 16px; margin-bottom: 10px; font-weight: 650; }
+    .opcao .ico { font-size: 26px; width: 34px; text-align: center; flex: none; }
+    .opcao small { display: block; color: var(--suave); font-weight: 400; font-size: 14px; }
+    .opcao.perigo { color: var(--vivo); }
+    .grade-opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .grade-opcoes .opcao { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 6px; margin: 0; min-height: 118px; }
+    .rotulo { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 600; color: var(--suave); }
+    .campo { width: 100%; background: var(--c2); border: 1px solid var(--linha); border-radius: 14px; padding: 14px; }
+    textarea.campo { min-height: 38dvh; line-height: 1.4; resize: vertical; }
+    .botoes { display: flex; gap: 10px; margin-top: 16px; }
+    .botoes > * { flex: 1; }
+    .botao { height: 56px; border-radius: 16px; background: var(--laranja); color: #fff; font-weight: 700; padding: 0 18px; }
+    .botao.sec { background: var(--c2); color: var(--texto); }
+    .nota { font-size: 14px; color: var(--suave); margin: 10px 2px 0; }
+    .erro-texto { color: var(--vivo); font-size: 14px; min-height: 20px; margin-top: 8px; }
+    .erro-texto:empty { display: none; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chips button { height: 44px; min-width: 52px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 700; color: var(--suave); }
+    .chips button.ativo { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .conectar-qr { display: block; width: min(240px, 66vw); margin: 4px auto 8px; background: #fff; border-radius: 16px; padding: 10px; }
+    .centro { text-align: center; }
+    .endereco { text-align: center; color: var(--suave); font-size: 14px; word-break: break-all; margin: 4px 0; }
+    .passos-lista { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+    .secao { margin-top: 22px; }
+    .secao h4 { margin: 0 0 8px; font-size: 17px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Controle do Telão</h1>
-    <span class="topo-direita">
-      <span id="status">Conectando…</span>
-      <button id="abrirCelulares" class="celulares" aria-label="Conectar outro celular ou instalar o ícone">📲</button>
-    </span>
+<div id="app">
+  <header class="topo">
+    <div class="marca"><img src="/logo-duraes.png" alt="" width="18" height="30"><b>TELÃO</b></div>
+    <div class="conexao">
+      <span id="status" role="status" aria-label="Sem conexão"></span>
+      <button class="btn-icone" id="bConectar" aria-label="Conectar outro celular e colocar o ícone na tela"></button>
+    </div>
   </header>
   <div class="faixa"></div>
 
-  <section class="ao-vivo">
-    <div class="previa" id="previa"><span class="vazio">Nada no telão</span></div>
-    <div class="info"><b id="titulo">—</b><span id="contador"></span></div>
-    <div class="navegar">
-      <button id="anterior" aria-label="Anterior">◀</button>
-      <button id="proximo" class="prox" aria-label="Próximo">Próximo ▶</button>
+  <section class="vivo" id="vivo" aria-label="O que está no telão">
+    <div class="vivo-topo">
+      <div class="previa" id="previa"></div>
+      <div class="vivo-info" id="vivoInfo"><small id="vivoRotulo">NO TELÃO</small><b id="vivoTitulo"></b><span id="vivoSub"></span></div>
     </div>
-    <div class="controles-video" id="controlesVideo" hidden>
-      <button id="tocar">▶ Tocar</button>
-      <button id="reiniciar" class="secundario">⟲ Do início</button>
-      <label>🔊 <input id="volume" type="range" min="0" max="1" step="0.05"></label>
+    <div class="passos">
+      <button id="bVoltar" aria-label="Voltar"></button>
+      <button id="bAvancar" class="avancar" aria-label="Avançar"></button>
     </div>
-    <div class="extras">
-      <button id="preta">Tela preta</button>
-      <button id="fechar">Tirar do telão</button>
+    <div class="barra-midia" id="barraMidia" hidden>
+      <button class="principal" id="bTocar"></button>
+      <button class="secundario" id="bReiniciar" aria-label="Voltar ao início">⟲</button>
+      <label>🔊<input id="volume" type="range" min="0" max="1" step="0.05" aria-label="Volume"></label>
+    </div>
+    <div class="dica-vivo" id="dicaVivo" hidden><span id="dicaTexto"></span><button id="bReabrir" hidden>Abrir de novo</button></div>
+    <div class="atalhos">
+      <button id="bPreta">Tela preta</button>
+      <button id="bTirar">Tirar do ar</button>
+      <button id="bPrevia">Prévia: sim</button>
     </div>
   </section>
 
-  <nav class="abas">
-    <button data-aba="culto" class="ativa">Culto</button>
-    <button data-aba="musicas">Músicas</button>
-    <button data-aba="arquivos">Arquivos</button>
+  <main class="conteudo" id="conteudo">
+    <section id="vista-dias">
+      <div class="dias" id="chipsDias" role="tablist" aria-label="Dias da semana"></div>
+      <div class="titulo">
+        <div><h2 id="nomeDia"></h2><p id="subDia"></p></div>
+        <button class="btn-icone" id="bMenuDia" aria-label="Mais opções do dia"></button>
+      </div>
+      <div class="lista" id="listaDias"></div>
+    </section>
+
+    <section id="vista-musicas" hidden>
+      <div class="titulo"><div><h2>Músicas</h2></div><button class="botao" id="bNovaMusica" style="height:46px">＋ Nova</button></div>
+      <div class="busca"><input class="campo" id="busca" type="search" placeholder="Buscar música ou trecho da letra" autocomplete="off"></div>
+      <div class="lista" id="listaMusicas" style="margin-top:12px"></div>
+    </section>
+
+    <section id="vista-midia" hidden>
+      <div class="titulo"><div><h2>Mídia</h2><p>Tudo o que já foi enviado fica guardado aqui</p></div></div>
+      <div class="filtro" id="filtroMidia"></div>
+      <div class="lista" id="listaMidia"></div>
+      <button class="link-pastas" id="bPastas">📁 Abrir as pastas no computador</button>
+    </section>
+
+    <footer class="credito"><img src="/logo-duraes.png" alt="" width="15" height="24"><span>App feito pela <b>DURÃES</b></span></footer>
+  </main>
+
+  <nav class="nav" aria-label="Menu">
+    <button data-vista="dias" class="ativa" id="navDias"></button>
+    <button data-vista="musicas" id="navMusicas"></button>
+    <button data-vista="midia" id="navMidia"></button>
+    <button class="adicionar" id="navAdicionar" aria-label="Adicionar"></button>
   </nav>
+</div>
 
-  <section class="painel" id="aba-culto">
-    <div class="dias" id="diasCulto"></div>
-    <div class="titulo-dia"><span><b id="nomeDia"></b><small id="marcaHoje">hoje</small></span>
-      <button id="limparDia">Limpar dia</button></div>
-    <div class="lista" id="listaCulto"></div>
-  </section>
+<div class="aviso" id="aviso" role="status" hidden></div>
 
-  <section class="painel" id="aba-musicas" hidden>
-    <div class="barra">
-      <input id="busca" type="search" placeholder="Buscar música ou trecho da letra">
-      <button class="botao" id="novaMusica">+ Nova</button>
-    </div>
-    <div class="lista" id="listaMusicas"></div>
-  </section>
+<dialog id="folha">
+  <div class="folha-in">
+    <div class="folha-topo"><h3 id="folhaTitulo"></h3><button class="fechar" id="folhaFechar" aria-label="Fechar">✕</button></div>
+    <div id="folhaCorpo"></div>
+  </div>
+</dialog>
 
-  <section class="painel" id="aba-arquivos" hidden>
-    <label class="colocar">Colocar em: <select id="diaEnvio"></select></label>
-    <label class="enviar">
-      📄 Enviar PDF, imagens, vídeo ou áudio
-      <small>O PDF vira slides automaticamente, na ordem</small>
-      <input id="arquivo" type="file" accept="application/pdf,image/*,video/*,audio/*" multiple hidden>
-    </label>
-    <div id="progresso"></div>
-    <form class="youtube" id="formYoutube">
-      <b>📺 YouTube (vídeo ou ao vivo)</b>
-      <input id="linkYoutube" type="text" inputmode="url" placeholder="Cole aqui o link do YouTube" autocomplete="off">
-      <div class="linha">
-        <button type="submit" class="botao" id="mostrarYoutube">▶ Mostrar no telão</button>
-        <button type="button" id="guardarYoutube">Só guardar</button>
-      </div>
-      <div id="erroYoutube"></div>
-    </form>
-    <button class="pastas" id="abrirPastas">📁 Abrir as pastas dos dias no computador</button>
-    <p class="dica">No computador, é só colocar o arquivo na pasta do dia (ex.: “3 - Quarta”). Ele aparece aqui sozinho, já convertido e na lista daquele dia.</p>
-    <div class="filtro" id="filtroArquivos"></div>
-    <div class="lista" id="listaArquivos"></div>
-  </section>
+<input type="file" id="arqDocs" accept="application/pdf,image/*" multiple hidden>
+<input type="file" id="arqMidia" accept="video/*,audio/*" multiple hidden>
 
-  <footer class="credito">
-    <img src="/logo-duraes.png" alt="Logo Durães" width="23" height="38">
-    <span>App feito pela <b>Durães</b></span>
-  </footer>
+<script type="module">
+  import { conectar, urlSlide } from '/conexao.js';
 
-  <dialog id="celulares">
-    <h2>Conectar outro celular</h2>
-    <p class="contagem" id="contagemCelulares"></p>
-    <img class="qr" id="qrCelular" alt="QR code para conectar outro celular">
-    <p class="endereco" id="enderecoCelular"></p>
-    <p class="endereco">O outro celular aponta a câmera para este QR (precisa estar no mesmo Wi-Fi).</p>
-    <div class="botoes">
-      <button type="button" id="qrNoTelao">Mostrar QR no telão</button>
-      <button type="button" id="fecharCelulares">Fechar</button>
-    </div>
+  // ---------- Básico ----------
+  const $ = (id) => document.getElementById(id);
+  const h = (tag, props = {}, ...filhos) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') el.className = v;
+      else if (k === 'texto') el.textContent = v;
+      else if (k === 'html') el.innerHTML = v;
+      else if (k.startsWith('on')) el[k] = v;
+      else if (v === true) el.setAttribute(k, '');
+      else if (v !== false && v != null) el.setAttribute(k, v);
+    }
+    el.append(...filhos.flat().filter((f) => f != null && f !== false));
+    return el;
+  };
+  const IC = {
+    dias: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    musica: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>',
+    midia: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>',
+    mais: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    celular: '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>',
+    pontos: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+    voltar: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    avancar: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
+  };
+  const icone = (nome) => h('span', { html: IC[nome], style: 'display:contents' });
 
-    <div class="credito pequeno"><img src="/logo-duraes.png" alt="" width="15" height="24"><span>App feito pela <b>Durães</b></span></div>
+  const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+  const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+  const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira', sex: 'Sexta-feira', sab: 'Sábado', dom: 'Domingo' };
+  const MIDIA = ['video', 'youtube', 'audio', 'tela', 'site'];
+  const ehMidia = (item) => MIDIA.includes(item?.tipo);
+  const ehJanela = (item) => item?.tipo === 'tela' || item?.tipo === 'site'; // aparecem no telão pela captura de tela
 
-    <h3>📲 Colocar o ícone na tela do celular</h3>
-    <button type="button" class="botao" id="instalarAgora" hidden>Instalar o ícone agora</button>
-    <div id="passosIphone">
-      <b>iPhone (Safari)</b>
-      <ol>
-        <li>Toque em <b>Compartilhar</b> (o quadrado com a seta para cima).</li>
-        <li>Role e toque em <b>Adicionar à Tela de Início</b>.</li>
-        <li>Toque em <b>Adicionar</b>. Pronto: o ícone “Telão” aparece na tela.</li>
-      </ol>
-    </div>
-    <div id="passosAndroid">
-      <b>Android (Chrome)</b>
-      <ol>
-        <li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li>
-        <li>Toque em <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).</li>
-        <li>Confirme. O ícone “Telão” aparece na tela.</li>
-      </ol>
-    </div>
-  </dialog>
+  let estado = null;
+  let itens = [];
+  let vista = 'dias';
+  let diaVisto = null;
+  let hojeVisto = null;
+  let filtro = 'todos';
+  let previaVisivel = true;
+  let contagem = 0;
+  const abertos = new Map(); // linhas com slides/estrofes abertos (padrão: o item que está no ar)
 
-  <dialog id="editor">
-    <form method="dialog" id="formMusica">
-      <h2 id="tituloEditor">Nova música</h2>
-      <label for="mNome">Nome</label>
-      <input id="mNome" required>
-      <label for="mArtista">Artista (opcional)</label>
-      <input id="mArtista">
-      <label for="mLetra">Letra</label>
-      <textarea id="mLetra" required placeholder="Cole a letra aqui"></textarea>
-      <small>Deixe uma linha em branco entre as estrofes. Cada estrofe vira uma tela.</small>
-      <div id="erroMusica"></div>
-      <div class="rodape">
-        <button type="button" id="cancelarMusica">Cancelar</button>
-        <button type="submit" class="botao">Salvar</button>
-      </div>
-    </form>
-  </dialog>
+  const buscar = (id) => itens.find((i) => i.id === id);
+  const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
+  const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehMidia(item) ? 1 : item.slides.length;
 
-  <script type="module">
-    import { conectar, urlSlide } from '/conexao.js';
+  // ---------- Conexão com o computador ----------
+  const ws = conectar({
+    aoReceberEstado(novoEstado, novosItens, { controles }) {
+      estado = novoEstado;
+      itens = novosItens;
+      contagem = controles ?? 0;
+      // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
+      if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
+      hojeVisto = estado.hoje;
+      desenhar();
+      atualizarConectar?.();
+    },
+    aoMudarConexao(on) {
+      $('status').classList.toggle('on', on);
+      $('status').setAttribute('aria-label', on ? 'Conectado' : 'Sem conexão');
+    },
+  });
 
-    const $ = (id) => document.getElementById(id);
-    const ICONES = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧', tela: '🖥️' };
-    const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-    const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
-    const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira',
-      sex: 'Sexta-feira', sab: 'Sábado', dom: 'Domingo' };
-    let diaVisto = null;   // dia mostrado na aba Culto (começa no dia de hoje)
-    let filtroArquivos = 'todos';
-    let copiando = null;   // { chave, id, slides: Set, dias: Set } enquanto escolhe slides para copiar
-    let hojeVisto = null;
-    let estado = null;
-    let itens = [];
-    const abertos = new Set(); // itens com as partes expandidas, por aba
-    let editando = null;      // id da música no editor (null = nova)
+  // ---------- Mensagens ----------
+  let timerAviso;
+  function aviso(texto, { erro = false, pct = null, ms = 3500 } = {}) {
+    const el = $('aviso');
+    el.hidden = false;
+    el.className = 'aviso' + (erro ? ' erro' : '');
+    el.replaceChildren(...[h('span', { texto }), pct != null ? h('i', { style: `width:${pct}%` }) : null].filter(Boolean));
+    clearTimeout(timerAviso);
+    if (pct == null || pct >= 100) timerAviso = setTimeout(() => { el.hidden = true; }, ms);
+  }
 
-    const enviar = conectar({
-      aoReceberEstado(novoEstado, novosItens, { controles }) {
-        estado = novoEstado;
-        itens = novosItens;
-        contagemControles = controles ?? 0;
-        if ($('celulares').open) atualizarCelulares();
-        // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
-        if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
-        hojeVisto = estado.hoje;
-        desenhar();
-      },
-      aoMudarConexao(on) {
-        $('status').classList.toggle('on', on);
-        $('status').textContent = on ? 'Conectado' : 'Sem conexão';
-      },
-    });
+  // ---------- Folha que sobe de baixo ----------
+  const folha = $('folha');
+  function abrirFolha(titulo, ...conteudo) {
+    $('folhaTitulo').textContent = titulo;
+    $('folhaCorpo').replaceChildren(...conteudo.flat().filter(Boolean));
+    if (!folha.open) folha.showModal();
+    folha.scrollTop = 0;
+  }
+  const fecharFolha = () => { if (folha.open) folha.close(); atualizarConectar = null; };
+  $('folhaFechar').onclick = fecharFolha;
+  folha.addEventListener('click', (e) => { if (e.target === folha) fecharFolha(); });
+  folha.addEventListener('close', () => { atualizarConectar = null; });
 
-    const buscar = (id) => itens.find((i) => i.id === id);
-    const ehMidia = (item) => ['video', 'youtube', 'audio', 'tela'].includes(item?.tipo); // têm tocar/pausar (ou som) e volume
-    const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehMidia(item) ? 1 : item.slides.length;
-    const descricao = (item) => item.tipo === 'musica'
-      ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
-      : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
-      : item.tipo === 'tela' ? 'Mostra uma aba ou janela do computador'
-      : item.tipo === 'audio' ? 'Áudio'
-      : item.tipo === 'video' ? 'Vídeo' : `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`;
-    const descricaoComDias = (item) => [descricao(item), diasDoItem(item).map((d) => ABREV[d]).join(', ')].filter(Boolean).join(' · ');
-    const definirCulto = (dia, lista) => enviar({ acao: 'culto', dia, itens: lista });
-    const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
+  // Botão que pede um segundo toque antes de apagar.
+  function botaoPerigo(rotulo, confirmacao, acao) {
+    const b = h('button', { class: 'opcao perigo', type: 'button' }, h('span', { class: 'ico', texto: '🗑️' }), h('span', { texto: rotulo }));
+    let armado = false;
+    b.onclick = () => {
+      if (armado) { acao(); return; }
+      armado = true; b.lastChild.textContent = confirmacao;
+      setTimeout(() => { armado = false; b.lastChild.textContent = rotulo; }, 3500);
+    };
+    return b;
+  }
 
-    // ---------- Ao vivo ----------
-    $('anterior').onclick = () => enviar({ acao: 'anterior' });
-    $('proximo').onclick = () => enviar({ acao: 'proximo' });
-    $('preta').onclick = () => enviar({ acao: 'telaPreta', ligada: !estado?.telaPreta });
-    $('fechar').onclick = () => enviar({ acao: 'fechar' });
-    $('tocar').onclick = () => enviar({ acao: 'video', comando: estado.video.tocando ? 'pausar' : 'tocar' });
-    $('reiniciar').onclick = () => enviar({ acao: 'video', comando: 'reiniciar' });
-    $('volume').oninput = (e) => enviar({ acao: 'volume', valor: Number(e.target.value) });
+  // ---------- Topo e navegação ----------
+  $('bConectar').append(icone('celular'));
+  $('bMenuDia').append(icone('pontos'));
+  $('bVoltar').append(icone('voltar'));
+  $('bAvancar').append('Avançar ', icone('avancar'));
+  for (const [id, ic, rot] of [['navDias', 'dias', 'Dias'], ['navMusicas', 'musica', 'Músicas'], ['navMidia', 'midia', 'Mídia']]) {
+    $(id).append(icone(ic), rot);
+  }
+  $('navAdicionar').append(h('span', { class: 'bola' }, icone('mais')), 'Adicionar');
+  document.querySelectorAll('.nav [data-vista]').forEach((b) => {
+    b.onclick = () => { vista = b.dataset.vista; $('conteudo').scrollTop = 0; desenhar(); };
+  });
 
-    function desenharAoVivo() {
-      const item = estado.atual && buscar(estado.atual.id);
-      const slide = estado.atual?.slide ?? 0;
+  // ---------- Ao vivo ----------
+  $('bVoltar').onclick = () => ws({ acao: 'anterior' });
+  $('bAvancar').onclick = () => ws({ acao: 'proximo' });
+  $('bPreta').onclick = () => ws({ acao: 'telaPreta', ligada: !estado?.telaPreta });
+  $('bTirar').onclick = () => ws({ acao: 'fechar' });
+  $('bPrevia').onclick = () => { previaVisivel = !previaVisivel; desenharVivo(); };
+  $('bTocar').onclick = () => ws({ acao: 'video', comando: estado.video.tocando ? 'pausar' : 'tocar' });
+  $('bReiniciar').onclick = () => ws({ acao: 'video', comando: 'reiniciar' });
+  $('volume').oninput = (e) => ws({ acao: 'volume', valor: Number(e.target.value) });
+  $('bReabrir').onclick = async () => {
+    await fetch(`/api/itens/${estado.atual.id}/abrir-no-computador`, { method: 'POST' }).catch(() => {});
+    aviso('Abrindo a página no computador…');
+  };
+
+  let chavePrevia = null;
+  function desenharVivo() {
+    const item = estado.atual && buscar(estado.atual.id);
+    const slide = estado.atual?.slide ?? 0;
+    $('vivo').classList.toggle('sem-previa', !previaVisivel);
+    $('vivoInfo').classList.toggle('no-ar', Boolean(item));
+    $('vivoRotulo').textContent = item ? 'NO AR' : 'NO TELÃO';
+    $('vivoTitulo').textContent = item ? item.nome : 'Nada no ar';
+    $('vivoSub').textContent = !item ? 'Toque em ▶ em qualquer item'
+      : item.tipo === 'slides' ? `Slide ${slide + 1} de ${partes(item)}`
+      : item.tipo === 'musica' ? `Estrofe ${slide + 1} de ${partes(item)}`
+      : ehJanela(item) ? (estado.video.tocando ? 'Com som' : 'Som desligado')
+      : (estado.video.tocando ? 'Tocando' : 'Pausado');
+
+    // Prévia (só redesenha quando muda, para não piscar)
+    const chave = [item?.id, slide, estado.telaPreta, estado.video.tocando].join('|');
+    if (chave !== chavePrevia) {
+      chavePrevia = chave;
       const previa = $('previa');
       previa.replaceChildren();
-      if (!item) {
-        previa.innerHTML = '<span class="vazio">Nada no telão</span>';
-      } else if (item.tipo === 'slides') {
-        const img = document.createElement('img');
-        img.src = urlSlide(item, slide);
-        previa.append(img);
-      } else if (item.tipo === 'musica') {
-        const div = document.createElement('div');
-        div.className = 'letra';
-        div.textContent = item.estrofes[slide];
-        previa.append(div);
-      } else {
-        // Vídeo do YouTube mostra a capa do vídeo na prévia.
-        if (item.videoId) {
-          previa.append(Object.assign(document.createElement('img'), { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
-        }
-        if (item.tipo === 'audio') previa.insertAdjacentHTML('beforeend', '<span style="font-size:42px">🎧</span>');
-        if (item.tipo === 'tela') previa.insertAdjacentHTML('beforeend', '<span style="font-size:42px">🖥️</span>');
-        previa.insertAdjacentHTML('beforeend', `<span class="icone-video">${estado.video.tocando ? '▶ Tocando' : '⏸ Pausado'}</span>`);
-      }
-      if (estado.telaPreta) previa.insertAdjacentHTML('beforeend', '<span class="tag">TELA PRETA</span>');
+      if (!item) previa.append(h('span', { class: 'vazio', texto: 'Nada no telão' }));
+      else if (item.tipo === 'slides') previa.append(h('img', { src: urlSlide(item, slide), alt: '' }));
+      else if (item.tipo === 'musica') previa.append(h('div', { class: 'letra', texto: item.estrofes[slide] }));
+      else if (item.tipo === 'youtube' && item.videoId) previa.append(h('img', { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
+      else previa.append(h('span', { class: 'grande', texto: ICONE_TIPO[item.tipo] }));
+      if (estado.telaPreta) previa.append(h('div', { class: 'pret', texto: 'TELA PRETA' }));
+    }
 
-      // Na lista do dia, o "Próximo" no fim de um item passa para o seguinte.
-      const lista = estado.atual?.dia ? estado.cultos[estado.atual.dia] : [];
-      const pos = item ? lista.indexOf(item.id) : -1;
-      const temVizinho = (passo) => pos >= 0 && Boolean(buscar(lista[pos + passo]));
-      $('titulo').textContent = item ? item.nome : '—';
-      $('contador').textContent = item && !ehMidia(item) ? `${slide + 1} de ${partes(item)}` : '';
-      $('anterior').disabled = !item || (slide === 0 && !temVizinho(-1));
-      $('proximo').disabled = !item || (slide === partes(item) - 1 && !temVizinho(1));
-      $('fechar').disabled = !item;
-      $('preta').classList.toggle('ativo', estado.telaPreta);
-      $('preta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
+    // Voltar / Avançar: no fim de um item, segue para o próximo da lista do dia.
+    const lista = estado.atual?.dia ? estado.cultos[estado.atual.dia] : [];
+    const pos = item ? lista.indexOf(item.id) : -1;
+    const vizinho = (p) => pos >= 0 && Boolean(buscar(lista[pos + p]));
+    $('bVoltar').disabled = !item || (slide === 0 && !vizinho(-1));
+    $('bAvancar').disabled = !item || (slide === partes(item) - 1 && !vizinho(1));
 
-      $('controlesVideo').hidden = !ehMidia(item);
-      $('reiniciar').hidden = Boolean(item?.canal) || item?.tipo === 'tela'; // ao vivo e tela não voltam ao início
-      $('tocar').textContent = item?.tipo === 'tela'
-        ? (estado.video.tocando ? '🔇 Silenciar' : '🔊 Ligar som')
-        : (estado.video.tocando ? '⏸ Pausar' : '▶ Tocar');
+    // Som, tocar e pausar (vídeo, áudio, YouTube, tela e site)
+    $('barraMidia').hidden = !ehMidia(item);
+    if (ehMidia(item)) {
+      $('bTocar').textContent = ehJanela(item) ? (estado.video.tocando ? '🔇 Silenciar' : '🔊 Ligar som') : (estado.video.tocando ? '⏸ Pausar' : '▶ Tocar');
+      $('bReiniciar').hidden = ehJanela(item) || Boolean(item.canal);
       if (document.activeElement !== $('volume')) $('volume').value = estado.volume;
     }
-
-    // ---------- Abas ----------
-    document.querySelectorAll('.abas button').forEach((botao) => {
-      botao.onclick = () => {
-        document.querySelectorAll('.abas button').forEach((b) => b.classList.toggle('ativa', b === botao));
-        document.querySelectorAll('.painel').forEach((p) => { p.hidden = p.id !== `aba-${botao.dataset.aba}`; });
-      };
-    });
-
-    // ---------- Itens (usado nas três abas) ----------
-    function cartao(item, aba, { posicao } = {}) {
-      const chave = `${aba}:${item.id}`;
-      const noTelao = estado.atual?.id === item.id;
-      const el = document.createElement('div');
-      el.className = 'item' + (noTelao ? ' no-telao' : '');
-
-      const topo = document.createElement('div');
-      topo.className = 'item-topo';
-      const abrir = document.createElement('button');
-      abrir.className = 'item-abrir';
-      const capa = item.tipo === 'slides'
-        ? Object.assign(document.createElement('img'), { src: urlSlide(item, 0), loading: 'lazy', className: 'capa', alt: '' })
-        : Object.assign(document.createElement('span'), { className: 'capa', textContent: ICONES[item.tipo] });
-      const texto = document.createElement('div');
-      texto.append(Object.assign(document.createElement('b'), { textContent: item.nome }),
-        Object.assign(document.createElement('span'), {
-          textContent: (aba === 'culto' ? descricao(item) : descricaoComDias(item)) + (noTelao ? ' · no telão' : ''),
-        }));
-      abrir.append(capa, texto);
-      abrir.onclick = () => { abertos.has(chave) ? abertos.delete(chave) : abertos.add(chave); desenharListas(); };
-      topo.append(abrir);
-
-      if (posicao !== undefined) {
-        // Botões para reordenar ou tirar da lista do dia
-        const doDia = estado.cultos[diaVisto];
-        const mover = (passo) => {
-          const lista = [...doDia];
-          const [id] = lista.splice(posicao, 1);
-          lista.splice(posicao + passo, 0, id);
-          definirCulto(diaVisto, lista);
-        };
-        topo.append(
-          botaoMini('↑', 'Subir', posicao === 0, () => mover(-1)),
-          botaoMini('↓', 'Descer', posicao === doDia.length - 1, () => mover(1)),
-          botaoMini('✕', 'Tirar deste dia', false, () => definirCulto(diaVisto, doDia.filter((id) => id !== item.id))),
-        );
-      }
-      el.append(topo);
-
-      if (abertos.has(chave)) el.append(partesDoItem(item, aba, noTelao));
-      return el;
+    $('dicaVivo').hidden = !ehJanela(item);
+    if (ehJanela(item)) {
+      $('dicaTexto').textContent = item.tipo === 'site'
+        ? '👉 A página abriu no computador. Clique no telão e escolha a janela dela.'
+        : '👉 Clique no telão e escolha a aba ou janela que quer mostrar.';
+      $('bReabrir').hidden = item.tipo !== 'site';
     }
+    $('bPreta').classList.toggle('ligado', estado.telaPreta);
+    $('bPreta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
+    $('bTirar').disabled = !item;
+    $('bPrevia').textContent = previaVisivel ? 'Prévia: sim' : 'Prévia: não';
+  }
 
-    function botaoMini(texto, rotulo, desativado, acao) {
-      const b = Object.assign(document.createElement('button'), { className: 'mini', textContent: texto, disabled: desativado });
-      b.setAttribute('aria-label', rotulo);
-      b.onclick = acao;
-      return b;
-    }
+  // ---------- Listas ----------
+  const ICONE_TIPO = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧', tela: '🖥️', site: '🌐' };
+  const descricao = (item) => item.tipo === 'slides' ? `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`
+    : item.tipo === 'musica' ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
+    : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
+    : item.tipo === 'site' ? new URL(item.link).hostname.replace(/^www\./, '')
+    : item.tipo === 'tela' ? 'Aba ou janela do computador'
+    : item.tipo === 'audio' ? 'Áudio' : 'Vídeo';
 
-    function partesDoItem(item, aba, noTelao) {
-      const caixa = document.createElement('div');
-      caixa.className = 'partes';
-      const atual = (i) => noTelao && estado.atual.slide === i ? 'atual' : '';
-      const dia = aba === 'culto' ? diaVisto : undefined; // abrir pela lista do dia segue a ordem dela
+  function capa(item) {
+    if (item.tipo === 'slides') return h('div', { class: 'capa' }, h('img', { src: urlSlide(item, 0), alt: '', loading: 'lazy' }));
+    if (item.tipo === 'youtube' && item.videoId) return h('div', { class: 'capa' }, h('img', { src: `https://i.ytimg.com/vi/${item.videoId}/mqdefault.jpg`, alt: '', loading: 'lazy' }));
+    return h('div', { class: 'capa' + (item.tipo === 'musica' ? ' musica' : ''), texto: ICONE_TIPO[item.tipo] });
+  }
 
+  // Uma linha de item: toque no ▶ para mandar ao telão; ⋯ para as outras opções.
+  function linha(item, ctx) {
+    const noAr = estado.atual?.id === item.id;
+    const chave = `${ctx.vista}:${item.id}`;
+    const temPartes = item.tipo === 'slides' ? item.slides.length > 1 : item.tipo === 'musica';
+    const aberto = temPartes && (abertos.has(chave) ? abertos.get(chave) : noAr);
+    const dia = ctx.vista === 'dias' ? diaVisto : undefined; // abrir pela lista do dia segue a ordem dela
+    const tocar = () => ws({ acao: 'abrir', id: item.id, slide: 0, dia });
+
+    const sub = [descricao(item), ctx.vista !== 'dias' ? diasDoItem(item).map((d) => ABREV[d]).join(' ') : ''].filter(Boolean).join(' · ');
+    const corpo = h('button', { class: 'corpo', type: 'button', 'aria-expanded': temPartes ? String(aberto) : null },
+      capa(item),
+      h('div', { class: 'textos' }, h('b', { texto: item.nome }),
+        h('span', {}, noAr ? h('span', { class: 'tag-ar', texto: 'NO AR · ', style: 'display:inline' }) : null, sub)));
+    corpo.onclick = temPartes ? () => { abertos.set(chave, !aberto); desenharListas(); } : tocar;
+
+    const el = h('article', { class: 'linha' + (noAr ? ' no-ar' : '') },
+      h('div', { class: 'linha-topo' }, corpo,
+        h('button', { class: 'tocar', type: 'button', 'aria-label': `Mostrar ${item.nome} no telão`, onclick: tocar }, icone('play')),
+        h('button', { class: 'mais', type: 'button', 'aria-label': `Mais opções de ${item.nome}`, onclick: () => menuItem(item, ctx) }, icone('pontos'))));
+
+    if (aberto) {
+      const atual = (i) => noAr && estado.atual.slide === i ? ' atual' : '';
+      const caixa = h('div', { class: 'partes' });
       if (item.tipo === 'slides') {
-        const chave = `${aba}:${item.id}`;
-        const selecao = copiando?.chave === chave ? copiando : null;
-        const grade = document.createElement('div');
-        grade.className = 'miniaturas';
-        item.slides.forEach((_, i) => {
-          const b = Object.assign(document.createElement('button'), {
-            className: selecao ? (selecao.slides.has(i) ? 'selecionado' : '') : atual(i),
-          });
-          b.innerHTML = `<img src="${urlSlide(item, i)}" alt="Slide ${i + 1}" loading="lazy"><span>${i + 1}</span>`;
-          b.onclick = selecao
-            ? () => { selecao.slides.has(i) ? selecao.slides.delete(i) : selecao.slides.add(i); desenharListas(); }
-            : () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
-          grade.append(b);
-        });
-        caixa.append(grade);
-        if (selecao) caixa.append(painelCopia(item, selecao));
-        else if (item.slides.length > 1) {
-          const copiar = Object.assign(document.createElement('button'), { textContent: '⧉ Copiar slides para outros dias' });
-          copiar.onclick = () => { copiando = { chave, id: item.id, slides: new Set(), dias: new Set() }; desenharListas(); };
-          const linha = Object.assign(document.createElement('div'), { className: 'acoes' });
-          linha.append(copiar);
-          caixa.append(linha);
-        }
-      } else if (item.tipo === 'musica') {
-        const lista = document.createElement('div');
-        lista.className = 'estrofes';
-        item.estrofes.forEach((estrofe, i) => {
-          const b = Object.assign(document.createElement('button'), { className: atual(i), textContent: estrofe });
-          b.onclick = () => enviar({ acao: 'abrir', id: item.id, slide: i, dia });
-          lista.append(b);
-        });
-        caixa.append(lista);
+        caixa.append(h('div', { class: 'miniaturas' }, item.slides.map((_, i) =>
+          h('button', { class: 'mini' + atual(i), type: 'button', 'aria-label': `Slide ${i + 1}`, onclick: () => ws({ acao: 'abrir', id: item.id, slide: i, dia }) },
+            h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy' }), h('span', { texto: i + 1 })))));
       } else {
-        const b = Object.assign(document.createElement('button'), {
-          className: 'tocar-video ' + atual(0),
-          textContent: item.tipo === 'tela' ? (noTelao ? '🖥️ No telão' : '▶ Mostrar tela do computador')
-            : item.tipo === 'audio' ? (noTelao ? '🎧 Tocando no telão' : '▶ Tocar áudio')
-            : (noTelao ? '🎬 No telão' : '▶ Mostrar vídeo no telão'),
-        });
-        b.onclick = () => enviar({ acao: 'abrir', id: item.id, dia });
-        caixa.append(b);
+        item.estrofes.forEach((estrofe, i) => caixa.append(
+          h('button', { class: 'estrofe' + atual(i), type: 'button', texto: estrofe, onclick: () => ws({ acao: 'abrir', id: item.id, slide: i, dia }) })));
       }
+      el.append(caixa);
+    }
+    return el;
+  }
 
-      if (aba !== 'culto') {
-        const acoes = document.createElement('div');
-        acoes.className = 'acoes';
-        if (item.tipo === 'musica') {
-          const editar = Object.assign(document.createElement('button'), { textContent: 'Editar' });
-          editar.onclick = () => abrirEditor(item);
-          acoes.append(editar);
-        }
-        const apagar = Object.assign(document.createElement('button'), { className: 'perigo', textContent: 'Apagar' });
-        apagar.onclick = async () => {
-          if (confirm(`Apagar "${item.nome}"?`)) await fetch(`/api/itens/${item.id}`, { method: 'DELETE' });
-        };
-        if (item.tipo !== 'tela') acoes.append(apagar); // a tela do computador é um item fixo
-        caixa.append(escolherDias(item), acoes);
-      }
-      return caixa;
+  function preencher(container, elementos, vazio) {
+    container.replaceChildren(...(elementos.length ? elementos : [vazio]));
+  }
+
+  const normalizar = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  function desenharListas() {
+    $('vista-dias').hidden = vista !== 'dias';
+    $('vista-musicas').hidden = vista !== 'musicas';
+    $('vista-midia').hidden = vista !== 'midia';
+
+    if (vista === 'dias') {
+      $('chipsDias').replaceChildren(...DIAS.map((d) => h('button', {
+        class: (d === diaVisto ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''), type: 'button', role: 'tab', 'aria-selected': String(d === diaVisto),
+        texto: ABREV[d], onclick: () => { diaVisto = d; desenharListas(); },
+      })));
+      const lista = estado.cultos[diaVisto].map(buscar).filter(Boolean);
+      $('nomeDia').replaceChildren(...[NOME_DIA[diaVisto], diaVisto === estado.hoje ? h('small', { texto: 'hoje' }) : null].filter(Boolean));
+      $('subDia').textContent = lista.length ? `${lista.length} ${lista.length > 1 ? 'itens' : 'item'}` : 'Lista vazia';
+      $('bMenuDia').disabled = false;
+      preencher($('listaDias'), lista.map((item) => linha(item, { vista: 'dias' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: `Nada em ${NOME_DIA[diaVisto]} ainda.` }),
+        h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
     }
 
-    // Escolher slides de um PDF (ex.: o slide de domingo que veio no PDF de segunda)
-    // e copiar para os dias marcados. Vira um item novo, que fica salvo na aba Arquivos.
-    function painelCopia(item, selecao) {
-      const painel = Object.assign(document.createElement('div'), { className: 'copiar' });
-      painel.append(Object.assign(document.createElement('p'), {
-        textContent: 'Toque nos slides que quer copiar e escolha os dias:',
-      }));
-      const linha = Object.assign(document.createElement('div'), { className: 'dias' });
-      for (const d of DIAS) {
-        const b = Object.assign(document.createElement('button'), {
-          textContent: ABREV[d], className: selecao.dias.has(d) ? 'ativo' : '',
-        });
-        b.onclick = () => { selecao.dias.has(d) ? selecao.dias.delete(d) : selecao.dias.add(d); desenharListas(); };
-        linha.append(b);
-      }
-      const rodape = Object.assign(document.createElement('div'), { className: 'rodape' });
-      const cancelar = Object.assign(document.createElement('button'), { textContent: 'Cancelar', type: 'button' });
-      cancelar.onclick = () => { copiando = null; desenharListas(); };
-      const n = selecao.slides.size;
-      const ok = Object.assign(document.createElement('button'), {
-        className: 'botao', disabled: n === 0,
-        textContent: n === 0 ? 'Copiar' : `Copiar ${n} slide${n > 1 ? 's' : ''}`,
-      });
-      ok.onclick = async () => {
-        ok.disabled = true;
-        const resposta = await fetch(`/api/itens/${item.id}/copiar`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slides: [...selecao.slides], dias: [...selecao.dias] }),
-        }).catch(() => null);
-        const dados = await resposta?.json().catch(() => ({}));
-        if (!resposta?.ok) { alert(dados?.erro || 'Não foi possível copiar.'); ok.disabled = false; return; }
-        copiando = null;
-        abertos.add(`arquivos:${dados.copia.id}`);
-        desenharListas();
-      };
-      rodape.append(cancelar, ok);
-      painel.append(linha, rodape);
-      return painel;
-    }
-
-    function desenharFiltro() {
-      const opcoes = [['todos', 'Todos'], ...DIAS.map((d) => [d, ABREV[d]]), ['nenhum', 'Sem dia']];
-      $('filtroArquivos').replaceChildren(...opcoes.map(([valor, texto]) => {
-        const b = Object.assign(document.createElement('button'), {
-          textContent: texto, className: filtroArquivos === valor ? 'ativo' : '',
-        });
-        b.onclick = () => { filtroArquivos = valor; desenharListas(); };
-        return b;
-      }));
-    }
-
-    // Link do YouTube: guarda como item (no dia escolhido em "Colocar em") e, se pedir, já mostra.
-    async function enviarYoutube(mostrar) {
-      const link = $('linkYoutube').value.trim();
-      $('erroYoutube').textContent = '';
-      if (!link) { $('erroYoutube').textContent = 'Cole o link do YouTube.'; return; }
-      $('mostrarYoutube').disabled = $('guardarYoutube').disabled = true;
-      const resposta = await fetch('/api/youtube', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link, dia: $('diaEnvio').value }),
-      }).catch(() => null);
-      const dados = await resposta?.json().catch(() => ({}));
-      $('mostrarYoutube').disabled = $('guardarYoutube').disabled = false;
-      if (!resposta?.ok) { $('erroYoutube').textContent = dados?.erro || 'Falha na conexão com o computador.'; return; }
-      $('linkYoutube').value = '';
-      abertos.add(`arquivos:${dados.item.id}`);
-      if (mostrar) enviar({ acao: 'abrir', id: dados.item.id });
-      desenharListas();
-    }
-    $('formYoutube').onsubmit = (e) => { e.preventDefault(); enviarYoutube(true); };
-    $('guardarYoutube').onclick = () => enviarYoutube(false);
-
-    // ---------- Conectar outro celular e instalar o ícone ----------
-    let contagemControles = 0;
-    let pedidoInstalar = null; // Android/Chrome em conexão segura oferece instalar direto
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pedidoInstalar = e; $('instalarAgora').hidden = false; });
-    $('instalarAgora').onclick = async () => { pedidoInstalar?.prompt(); pedidoInstalar = null; $('instalarAgora').hidden = true; };
-
-    $('abrirCelulares').onclick = async () => {
-      const ehIphone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const ehAndroid = /Android/i.test(navigator.userAgent);
-      // Mostra primeiro o passo a passo do aparelho da pessoa.
-      $('passosIphone').hidden = ehAndroid;
-      $('passosAndroid').hidden = ehIphone;
-      atualizarCelulares();
-      $('celulares').showModal();
-      try {
-        const { url, qrcode } = await (await fetch('/api/conexao')).json();
-        $('qrCelular').src = qrcode;
-        $('enderecoCelular').textContent = url;
-      } catch {}
-    };
-    $('fecharCelulares').onclick = () => $('celulares').close();
-    $('qrNoTelao').onclick = () => enviar({ acao: 'qr', ligado: !estado?.qrNoTelao });
-
-    function atualizarCelulares() {
-      $('contagemCelulares').textContent = contagemControles === 1
-        ? '1 celular conectado agora' : `${contagemControles} celulares conectados agora`;
-      $('qrNoTelao').classList.toggle('ativo', Boolean(estado?.qrNoTelao));
-      $('qrNoTelao').textContent = estado?.qrNoTelao ? 'Tirar QR do telão' : 'Mostrar QR no telão';
-    }
-
-    $('abrirPastas').onclick = async () => {
-      const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);
-      $('abrirPastas').textContent = resposta?.ok
-        ? '📁 Pastas abertas no computador' : '📁 Não foi possível abrir as pastas';
-      setTimeout(() => { $('abrirPastas').textContent = '📁 Abrir as pastas dos dias no computador'; }, 3000);
-    };
-
-    // Botões Seg..Dom: liga e desliga o item na lista de cada dia.
-    function escolherDias(item) {
-      const caixa = document.createElement('div');
-      caixa.className = 'em-dias';
-      caixa.append(Object.assign(document.createElement('span'), { textContent: 'Mostrar nos dias:' }));
-      const linha = document.createElement('div');
-      linha.className = 'dias';
-      for (const d of DIAS) {
-        const lista = estado.cultos[d];
-        const marcado = lista.includes(item.id);
-        const b = Object.assign(document.createElement('button'), {
-          textContent: ABREV[d], className: (marcado ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''),
-        });
-        b.setAttribute('aria-pressed', marcado);
-        b.onclick = () => definirCulto(d, marcado ? lista.filter((id) => id !== item.id) : [...lista, item.id]);
-        linha.append(b);
-      }
-      caixa.append(linha);
-      return caixa;
-    }
-
-    function desenharDias() {
-      const linha = $('diasCulto');
-      linha.replaceChildren(...DIAS.map((d) => {
-        const b = Object.assign(document.createElement('button'), {
-          textContent: ABREV[d], className: (d === diaVisto ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''),
-        });
-        b.onclick = () => { diaVisto = d; desenharListas(); };
-        return b;
-      }));
-      $('nomeDia').textContent = NOME_DIA[diaVisto];
-      $('marcaHoje').hidden = diaVisto !== estado.hoje;
-      $('limparDia').disabled = estado.cultos[diaVisto].length === 0;
-
-      // "Colocar em" do envio acompanha o dia escolhido na aba Culto.
-      const select = $('diaEnvio');
-      if (select.options.length === 0) {
-        for (const d of DIAS) select.add(new Option(NOME_DIA[d], d));
-        select.add(new Option('Só guardar (nenhum dia)', ''));
-      }
-      if (select.dataset.dia !== diaVisto) { select.value = diaVisto; select.dataset.dia = diaVisto; }
-    }
-
-    $('limparDia').onclick = () => {
-      if (confirm(`Tirar todos os itens da lista de ${NOME_DIA[diaVisto]}? Os arquivos continuam guardados.`)) {
-        definirCulto(diaVisto, []);
-      }
-    };
-
-    function preencher(lista, elementos, vazio) {
-      lista.replaceChildren(...elementos);
-      if (elementos.length === 0) lista.innerHTML = `<div class="nada">${vazio}</div>`;
-    }
-
-    function desenharListas() {
-      desenharDias();
-      const culto = estado.cultos[diaVisto].map(buscar).filter(Boolean);
-      preencher($('listaCulto'), culto.map((item, i) => cartao(item, 'culto', { posicao: i })),
-        `Nada na lista de ${NOME_DIA[diaVisto]}. Envie arquivos na aba Arquivos ou, nas abas Músicas e Arquivos, abra um item e marque o dia.`);
-
+    if (vista === 'musicas') {
       const termo = normalizar($('busca').value);
       const musicas = itens.filter((i) => i.tipo === 'musica')
         .filter((m) => !termo || normalizar(`${m.nome} ${m.artista} ${m.letra}`).includes(termo))
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-      preencher($('listaMusicas'), musicas.map((m) => cartao(m, 'musicas')),
-        termo ? 'Nenhuma música encontrada.' : 'Nenhuma música ainda. Toque em “+ Nova” para cadastrar.');
-
-      desenharFiltro();
-      const arquivos = itens.filter((i) => i.tipo !== 'musica').filter((i) => {
-        if (filtroArquivos === 'todos') return true;
-        const dias = diasDoItem(i);
-        return filtroArquivos === 'nenhum' ? dias.length === 0 : dias.includes(filtroArquivos);
-      });
-      preencher($('listaArquivos'), arquivos.map((a) => cartao(a, 'arquivos')),
-        filtroArquivos === 'todos' ? 'Nenhum arquivo ainda. Envie um PDF, imagens ou vídeo acima.' : 'Nenhum arquivo neste dia.');
+      preencher($('listaMusicas'), musicas.map((m) => linha(m, { vista: 'musicas' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: termo ? 'Nenhuma música encontrada.' : 'Nenhuma música ainda.' }),
+        termo ? null : h('button', { class: 'botao', type: 'button', texto: '＋ Nova música', onclick: () => editorMusica() })));
     }
 
-    const normalizar = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    $('busca').oninput = desenharListas;
-
-    function desenhar() {
-      desenharAoVivo();
-      desenharListas();
+    if (vista === 'midia') {
+      const grupos = [['todos', 'Tudo', () => true], ['slides', 'Slides', (i) => i.tipo === 'slides'], ['video', 'Vídeos', (i) => i.tipo === 'video'],
+        ['audio', 'Áudios', (i) => i.tipo === 'audio'], ['links', 'Links', (i) => ['youtube', 'site', 'tela'].includes(i.tipo)]];
+      $('filtroMidia').replaceChildren(...grupos.map(([id, rot]) => h('button', {
+        class: filtro === id ? 'ativo' : '', type: 'button', texto: rot, onclick: () => { filtro = id; desenharListas(); },
+      })));
+      const passa = grupos.find((g) => g[0] === filtro)[2];
+      const lista = itens.filter((i) => i.tipo !== 'musica').filter(passa);
+      preencher($('listaMidia'), lista.map((item) => linha(item, { vista: 'midia' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: 'Nada por aqui ainda.' }),
+        h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
     }
 
-    // ---------- Editor de música ----------
-    function abrirEditor(musica) {
-      editando = musica?.id ?? null;
-      $('tituloEditor').textContent = musica ? 'Editar música' : 'Nova música';
-      $('mNome').value = musica?.nome ?? '';
-      $('mArtista').value = musica?.artista ?? '';
-      $('mLetra').value = musica?.letra ?? '';
-      $('erroMusica').textContent = '';
-      $('editor').showModal();
+    document.querySelectorAll('.nav [data-vista]').forEach((b) => b.classList.toggle('ativa', b.dataset.vista === vista));
+  }
+  $('busca').oninput = desenharListas;
+
+  function desenhar() {
+    if (!estado) return;
+    desenharVivo();
+    desenharListas();
+  }
+
+  // ---------- Menu ⋯ de um item ----------
+  function menuItem(item, ctx) {
+    const lista = estado.cultos[diaVisto];
+    const pos = lista.indexOf(item.id);
+    const opcoes = [];
+    const opcao = (ico, texto, dica, acao, extra = {}) => h('button', { class: 'opcao', type: 'button', onclick: acao, ...extra },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
+
+    if (ctx.vista === 'dias' && pos >= 0) {
+      const mover = (p) => { const nova = [...lista]; nova.splice(pos, 1); nova.splice(pos + p, 0, item.id); ws({ acao: 'culto', dia: diaVisto, itens: nova }); fecharFolha(); };
+      opcoes.push(
+        opcao('⬆️', 'Subir na lista', null, () => mover(-1), { disabled: pos === 0 }),
+        opcao('⬇️', 'Descer na lista', null, () => mover(1), { disabled: pos === lista.length - 1 }),
+        opcao('➖', 'Tirar deste dia', 'O arquivo continua guardado', () => { ws({ acao: 'culto', dia: diaVisto, itens: lista.filter((id) => id !== item.id) }); fecharFolha(); }),
+      );
     }
-    $('novaMusica').onclick = () => abrirEditor(null);
-    $('cancelarMusica').onclick = () => $('editor').close();
-    $('formMusica').onsubmit = async (e) => {
-      e.preventDefault();
-      const corpo = { nome: $('mNome').value, artista: $('mArtista').value, letra: $('mLetra').value };
-      const resposta = await fetch(editando ? `/api/musicas/${editando}` : '/api/musicas', {
-        method: editando ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
+
+    // Em quais dias o item aparece (liga e desliga cada dia)
+    const chips = h('div', { class: 'chips' }, DIAS.map((d) => {
+      const b = h('button', { type: 'button', texto: ABREV[d], class: estado.cultos[d].includes(item.id) ? 'ativo' : '' });
+      b.onclick = () => {
+        const atual = estado.cultos[d];
+        const marcado = atual.includes(item.id);
+        ws({ acao: 'culto', dia: d, itens: marcado ? atual.filter((id) => id !== item.id) : [...atual, item.id] });
+        b.classList.toggle('ativo', !marcado);
+      };
+      return b;
+    }));
+    opcoes.push(h('div', { style: 'margin:6px 0 14px' }, h('span', { class: 'rotulo', texto: 'Mostrar nos dias' }), chips));
+
+    if (item.tipo === 'slides' && item.slides.length > 1) opcoes.push(opcao('⧉', 'Copiar alguns slides para outros dias', 'Escolha só os slides que quiser', () => copiarSlides(item)));
+    if (item.tipo === 'musica') opcoes.push(opcao('✏️', 'Editar a letra', null, () => editorMusica(item)));
+    if (item.tipo === 'site') opcoes.push(opcao('🔁', 'Abrir a página de novo no computador', null, async () => {
+      await fetch(`/api/itens/${item.id}/abrir-no-computador`, { method: 'POST' }).catch(() => {});
+      fecharFolha(); aviso('Abrindo a página no computador…');
+    }));
+    if (item.tipo !== 'tela') opcoes.push(botaoPerigo('Apagar de vez', 'Toque de novo para apagar', async () => {
+      await fetch(`/api/itens/${item.id}`, { method: 'DELETE' }).catch(() => {});
+      fecharFolha();
+    }));
+    abrirFolha(item.nome, ...opcoes);
+  }
+
+  $('bMenuDia').onclick = () => {
+    const lista = estado.cultos[diaVisto];
+    abrirFolha(NOME_DIA[diaVisto],
+      h('button', { class: 'opcao', type: 'button', onclick: () => abrirAdicionar() }, h('span', { class: 'ico', texto: '＋' }), h('span', { texto: 'Adicionar neste dia' })),
+      h('button', { class: 'opcao', type: 'button', disabled: lista.length === 0 }, h('span', { class: 'ico', texto: '🧹' }),
+        h('span', {}, 'Limpar o dia', h('small', { texto: 'Tira todos da lista. Os arquivos continuam guardados.' }))),
+    );
+    const limpar = $('folhaCorpo').children[1];
+    let armado = false;
+    limpar.onclick = () => {
+      if (armado) { ws({ acao: 'culto', dia: diaVisto, itens: [] }); fecharFolha(); return; }
+      armado = true; limpar.querySelector('span:last-child').firstChild.textContent = 'Toque de novo para limpar';
+      setTimeout(() => { armado = false; limpar.querySelector('span:last-child').firstChild.textContent = 'Limpar o dia'; }, 3500);
+    };
+  };
+
+  // ---------- Copiar slides para outros dias ----------
+  function copiarSlides(item) {
+    const escolhidos = new Set();
+    const dias = new Set();
+    const botaoCopiar = h('button', { class: 'botao', type: 'button', disabled: true, texto: 'Copiar' });
+    const grade = h('div', { class: 'miniaturas' }, item.slides.map((_, i) => {
+      const b = h('button', { class: 'mini', type: 'button', 'aria-label': `Slide ${i + 1}` }, h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy' }), h('span', { texto: i + 1 }));
+      b.onclick = () => {
+        escolhidos.has(i) ? escolhidos.delete(i) : escolhidos.add(i);
+        b.classList.toggle('marcado', escolhidos.has(i));
+        botaoCopiar.disabled = escolhidos.size === 0;
+        botaoCopiar.textContent = escolhidos.size ? `Copiar ${escolhidos.size} slide${escolhidos.size > 1 ? 's' : ''}` : 'Copiar';
+      };
+      return b;
+    }));
+    const chips = h('div', { class: 'chips' }, DIAS.map((d) => {
+      const b = h('button', { type: 'button', texto: ABREV[d] });
+      b.onclick = () => { dias.has(d) ? dias.delete(d) : dias.add(d); b.classList.toggle('ativo', dias.has(d)); };
+      return b;
+    }));
+    botaoCopiar.onclick = async () => {
+      botaoCopiar.disabled = true;
+      const resposta = await fetch(`/api/itens/${item.id}/copiar`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slides: [...escolhidos], dias: [...dias] }),
       }).catch(() => null);
       const dados = await resposta?.json().catch(() => ({}));
-      if (!resposta?.ok) { $('erroMusica').textContent = dados?.erro || 'Não foi possível salvar.'; return; }
-      abertos.add(`musicas:${dados.musica.id}`);
-      $('editor').close();
-      desenharListas();
+      if (!resposta?.ok) { aviso(dados?.erro || 'Não foi possível copiar.', { erro: true }); botaoCopiar.disabled = false; return; }
+      fecharFolha();
+      aviso(dias.size ? `Copiado para ${[...dias].map((d) => ABREV[d]).join(', ')}.` : 'Copiado para a aba Mídia.');
     };
+    abrirFolha('Copiar slides',
+      h('p', { class: 'nota', style: 'margin:0 0 10px', texto: 'Toque nos slides que quer copiar e escolha os dias.' }), grade,
+      h('span', { class: 'rotulo', texto: 'Copiar para os dias' }), chips,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }), botaoCopiar));
+  }
 
-    // ---------- Envio de arquivos (com barra de progresso) ----------
-    $('arquivo').onchange = (e) => {
-      const arquivos = [...e.target.files];
-      e.target.value = '';
-      if (arquivos.length === 0) return;
-      const progresso = $('progresso');
-      progresso.className = '';
-
-      const dados = new FormData();
-      const dia = $('diaEnvio').value;
-      dados.append('dia', dia);
-      arquivos.forEach((a) => dados.append('arquivos', a));
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/enviar');
-      xhr.upload.onprogress = (ev) => {
-        if (!ev.lengthComputable) return;
-        const pct = Math.round((ev.loaded / ev.total) * 100);
-        progresso.textContent = pct < 100 ? `Enviando… ${pct}%` : 'Preparando…';
-      };
-      xhr.onload = () => {
-        let resposta = {};
-        try { resposta = JSON.parse(xhr.responseText); } catch {}
-        if (xhr.status === 200) {
-          const n = resposta.criados.length;
-          progresso.textContent = `Pronto! ${n} ${n > 1 ? 'itens adicionados' : 'item adicionado'}` +
-            (dia ? ` na lista de ${NOME_DIA[dia]}.` : '.');
-          resposta.criados.forEach((c) => abertos.add(`arquivos:${c.id}`));
-          desenharListas();
-        } else {
-          progresso.className = 'erro';
-          progresso.textContent = resposta.erro || 'Não foi possível enviar.';
-        }
-      };
-      xhr.onerror = () => { progresso.className = 'erro'; progresso.textContent = 'Falha na conexão com o computador.'; };
-      progresso.textContent = 'Enviando…';
-      xhr.send(dados);
+  // ---------- Música: nova ou editar ----------
+  function editorMusica(musica) {
+    const nome = h('input', { class: 'campo', id: 'mNome', value: musica?.nome ?? '', autocomplete: 'off' });
+    const artista = h('input', { class: 'campo', id: 'mArtista', value: musica?.artista ?? '', autocomplete: 'off' });
+    const letra = h('textarea', { class: 'campo', id: 'mLetra', placeholder: 'Cole a letra aqui' });
+    letra.value = musica?.letra ?? '';
+    const erro = h('div', { class: 'erro-texto' });
+    const salvar = h('button', { class: 'botao', type: 'submit', texto: 'Salvar' });
+    const form = h('form', {},
+      h('label', { class: 'rotulo', for: 'mNome', texto: 'Nome' }), nome,
+      h('label', { class: 'rotulo', for: 'mArtista', texto: 'Artista (opcional)' }), artista,
+      h('label', { class: 'rotulo', for: 'mLetra', texto: 'Letra' }), letra,
+      h('p', { class: 'nota', texto: 'Deixe uma linha em branco entre as estrofes. Cada estrofe vira uma tela.' }), erro,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }), salvar));
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const resposta = await fetch(musica ? `/api/musicas/${musica.id}` : '/api/musicas', {
+        method: musica ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nome.value, artista: artista.value, letra: letra.value }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      if (!resposta?.ok) { erro.textContent = dados?.erro || 'Não foi possível salvar.'; return; }
+      fecharFolha();
+      vista = 'musicas'; abertos.set(`musicas:${dados.musica.id}`, true);
+      aviso('Música salva.');
+      desenhar();
     };
-  </script>
+    abrirFolha(musica ? 'Editar música' : 'Nova música', form);
+    if (!musica) nome.focus();
+  }
+  $('bNovaMusica').onclick = () => editorMusica();
+
+  // ---------- Adicionar ----------
+  let diaAdicionar = null;
+  function seletorDia() {
+    const select = h('select', { class: 'campo', id: 'diaAdd', 'aria-label': 'Em qual dia' },
+      DIAS.map((d) => h('option', { value: d, texto: NOME_DIA[d] + (d === estado.hoje ? ' (hoje)' : '') })),
+      h('option', { value: '', texto: 'Sem dia (fica só na aba Mídia)' }));
+    select.value = diaAdicionar;
+    select.onchange = () => { diaAdicionar = select.value; };
+    return h('div', {}, h('label', { class: 'rotulo', for: 'diaAdd', texto: 'Adicionar em' }), select);
+  }
+
+  function abrirAdicionar() {
+    diaAdicionar = vista === 'dias' ? diaVisto : estado.hoje;
+    const opcao = (ico, titulo, dica, acao) => h('button', { class: 'opcao', type: 'button', onclick: acao },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, titulo, h('small', { texto: dica })));
+    abrirFolha('Adicionar', seletorDia(), h('div', { class: 'grade-opcoes' },
+      opcao('📄', 'PDF ou imagens', 'O PDF vira slides sozinho', () => $('arqDocs').click()),
+      opcao('🎬', 'Vídeo ou áudio', 'MP4, MP3…', () => $('arqMidia').click()),
+      opcao('🔗', 'Link', 'YouTube, Univer…', () => formularioLink()),
+      opcao('🎵', 'Música', 'Colar a letra', () => editorMusica()),
+    ), h('div', { style: 'margin-top:10px' }, opcao('🖥️', 'Tela do computador', 'Mostrar agora uma aba ou janela', () => { ws({ acao: 'abrir', id: 'tela' }); fecharFolha(); })));
+  }
+  $('navAdicionar').onclick = () => abrirAdicionar();
+
+  $('arqDocs').onchange = (e) => enviarArquivos([...e.target.files], e.target);
+  $('arqMidia').onchange = (e) => enviarArquivos([...e.target.files], e.target);
+
+  // Envio de arquivos com barra de progresso. O PDF é convertido em slides no computador.
+  function enviarArquivos(arquivos, campo) {
+    campo.value = '';
+    if (arquivos.length === 0) return;
+    const dia = diaAdicionar ?? '';
+    fecharFolha();
+    const dados = new FormData();
+    dados.append('dia', dia);
+    arquivos.forEach((a) => dados.append('arquivos', a));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/enviar');
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round((ev.loaded / ev.total) * 100);
+      aviso(pct < 100 ? `Enviando… ${pct}%` : 'Preparando os slides…', { pct: Math.min(pct, 99) });
+    };
+    xhr.onload = () => {
+      let resposta = {};
+      try { resposta = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status !== 200) { aviso(resposta.erro || 'Não foi possível enviar.', { erro: true, ms: 6000 }); return; }
+      const n = resposta.criados.length;
+      aviso(`Pronto! ${n} ${n > 1 ? 'itens adicionados' : 'item adicionado'}${dia ? ` em ${NOME_DIA[dia]}` : ''}.`);
+      if (dia) { vista = 'dias'; diaVisto = dia; }
+      desenhar();
+    };
+    xhr.onerror = () => aviso('Falha na conexão com o computador.', { erro: true, ms: 6000 });
+    aviso('Enviando…', { pct: 0 });
+    xhr.send(dados);
+  }
+
+  // Link: YouTube (vídeo ou ao vivo) toca no telão; outros sites (Univer etc.) abrem no computador.
+  function formularioLink() {
+    const campo = h('input', { class: 'campo', id: 'linkCampo', type: 'text', inputmode: 'url', placeholder: 'Cole aqui o link', autocomplete: 'off', autocapitalize: 'off' });
+    const erro = h('div', { class: 'erro-texto' });
+    const enviarLink = async (mostrar, botao) => {
+      const link = campo.value.trim();
+      erro.textContent = '';
+      if (!link) { erro.textContent = 'Cole o link primeiro.'; return; }
+      botao.disabled = true;
+      const resposta = await fetch('/api/link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link, dia: diaAdicionar ?? '' }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      botao.disabled = false;
+      if (!resposta?.ok) { erro.textContent = dados?.erro || 'Falha na conexão com o computador.'; return; }
+      fecharFolha();
+      if (diaAdicionar) { vista = 'dias'; diaVisto = diaAdicionar; }
+      if (mostrar) ws({ acao: 'abrir', id: dados.item.id, dia: diaAdicionar || undefined });
+      aviso(mostrar ? 'Link adicionado.' : 'Link guardado.');
+      desenhar();
+    };
+    const mostrar = h('button', { class: 'botao', type: 'button', texto: '▶ Mostrar no telão' });
+    const guardar = h('button', { class: 'botao sec', type: 'button', texto: 'Só guardar' });
+    mostrar.onclick = () => enviarLink(true, mostrar);
+    guardar.onclick = () => enviarLink(false, guardar);
+    abrirFolha('Adicionar link', seletorDia(),
+      h('label', { class: 'rotulo', for: 'linkCampo', texto: 'Link' }), campo, erro,
+      h('div', { class: 'botoes' }, guardar, mostrar),
+      h('p', { class: 'nota', html: '<b>YouTube</b> (vídeo ou ao vivo) toca direto no telão. <b>Outros sites</b>, como o Univer, abrem no computador e você escolhe a janela no telão uma vez. O volume é sempre pelo celular.' }));
+    campo.focus();
+  }
+
+  // ---------- Mídia: pastas no computador ----------
+  $('bPastas').onclick = async () => {
+    const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);
+    aviso(resposta?.ok ? 'Pastas abertas no computador. Arquivos colocados nelas aparecem aqui sozinhos.' : 'Não foi possível abrir as pastas.', { erro: !resposta?.ok, ms: 5000 });
+  };
+
+  // ---------- Conectar outro celular e colocar o ícone ----------
+  let atualizarConectar = null;
+  let pedidoInstalar = null; // Android/Chrome em conexão segura oferece instalar direto
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pedidoInstalar = e; });
+
+  async function abrirConectar() {
+    const ua = navigator.userAgent;
+    const ehIphone = /iPhone|iPad|iPod/i.test(ua);
+    const ehAndroid = /Android/i.test(ua);
+    const contagemEl = h('p', { class: 'centro', style: 'margin:0 0 8px' });
+    const qr = h('img', { class: 'conectar-qr', alt: 'QR code para conectar outro celular' });
+    const enderecoEl = h('p', { class: 'endereco' });
+    const nomeEl = h('p', { class: 'endereco', hidden: true });
+    const botaoQr = h('button', { class: 'botao sec', type: 'button' });
+    botaoQr.onclick = () => ws({ acao: 'qr', ligado: !estado?.qrNoTelao });
+    atualizarConectar = () => {
+      contagemEl.textContent = contagem === 1 ? '1 celular conectado agora' : `${contagem} celulares conectados agora`;
+      botaoQr.textContent = estado?.qrNoTelao ? 'Tirar o QR do telão' : 'Mostrar o QR no telão';
+    };
+    atualizarConectar();
+
+    const passosIphone = h('div', {}, h('h4', { texto: 'iPhone (Safari)' }), h('ol', { class: 'passos-lista' },
+      h('li', { html: 'Toque em <b>Compartilhar</b> (o quadrado com a seta para cima).' }),
+      h('li', { html: 'Role e toque em <b>Adicionar à Tela de Início</b>.' }),
+      h('li', { html: 'Toque em <b>Adicionar</b>. O ícone “Telão” aparece na tela.' })));
+    const passosAndroid = h('div', {}, h('h4', { texto: 'Android (Chrome)' }), h('ol', { class: 'passos-lista' },
+      h('li', { html: 'Toque nos <b>três pontinhos ⋮</b> no canto de cima.' }),
+      h('li', { html: 'Toque em <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).' }),
+      h('li', { html: 'Confirme. O ícone “Telão” aparece na tela.' })));
+    const instalar = h('button', { class: 'botao', type: 'button', texto: 'Instalar o ícone agora', hidden: !pedidoInstalar, style: 'width:100%;margin-bottom:12px' });
+    instalar.onclick = async () => { pedidoInstalar?.prompt(); pedidoInstalar = null; instalar.hidden = true; };
+
+    abrirFolha('Conectar e instalar', contagemEl, qr, enderecoEl, nomeEl,
+      h('p', { class: 'nota centro', texto: 'Outro celular aponta a câmera para este QR. Precisa estar no mesmo Wi-Fi do computador.' }),
+      h('div', { class: 'botoes' }, botaoQr),
+      h('div', { class: 'secao' }, h('h4', { texto: '📲 Ícone na tela do celular' }), instalar,
+        ehAndroid ? null : passosIphone, ehIphone ? null : passosAndroid),
+      h('div', { class: 'credito' }, h('img', { src: '/logo-duraes.png', alt: '', width: 15, height: 24 }), h('span', {}, 'App feito pela ', h('b', { texto: 'DURÃES' }))));
+    try {
+      const { url, urlNome, qrcode } = await (await fetch('/api/conexao')).json();
+      qr.src = qrcode;
+      enderecoEl.textContent = url;
+      if (urlNome) { nomeEl.hidden = false; nomeEl.textContent = `ou, com o nome do computador: ${urlNome}`; }
+    } catch {}
+  }
+  $('bConectar').onclick = abrirConectar;
+</script>
 </body>
 </html>

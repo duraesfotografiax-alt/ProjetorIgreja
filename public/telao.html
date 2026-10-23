@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Telão</title>
+  <title>Telão Durães</title>
+  <link rel="icon" type="image/png" href="/icones/icone-192.png">
   <style>
     html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
     .camada {
@@ -220,9 +221,17 @@
       }
       tela.classList.remove('visivel');
       botao.hidden = false;
-      botao.innerHTML = navigator.mediaDevices?.getDisplayMedia
-        ? '🖥️ Clique aqui e escolha a aba ou janela<small>No Chrome: “Guia do Chrome” → escolha a aba → marque “Compartilhar áudio da guia”</small>'
-        : '🖥️ Abra o telão pelo endereço http://localhost:8080/telao.html<small>Por segurança, o navegador só libera a captura de tela nesse endereço</small>';
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        botao.innerHTML = '🖥️ Abra o telão pelo endereço http://localhost:8080/telao.html<small>Por segurança, o navegador só libera a captura de tela nesse endereço</small>';
+        return;
+      }
+      botao.textContent = '';
+      botao.append(item.tipo === 'site' ? `🖥️ Clique aqui e escolha a janela de “${item.nome}”` : '🖥️ Clique aqui e escolha a aba ou janela');
+      const dica = document.createElement('small');
+      dica.textContent = item.tipo === 'site'
+        ? 'A página abriu no computador. Escolha a aba dela e marque “Compartilhar áudio da guia”.'
+        : 'No Chrome: “Guia do Chrome” → escolha a aba → marque “Compartilhar áudio da guia”.';
+      botao.append(dica);
     }
     $('escolherTela').onclick = async () => {
       if (!navigator.mediaDevices?.getDisplayMedia) return;
@@ -242,7 +251,7 @@
       const { estado, itens } = ultimo;
       if (!estado) return;
       const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
-      controlarTela(item?.tipo === 'tela' ? item : null, estado);
+      controlarTela(['tela', 'site'].includes(item?.tipo) ? item : null, estado);
     }
 
     // ---------- YouTube (vídeo ou ao vivo) com o player oficial ----------
@@ -335,7 +344,7 @@
         controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
         controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
         controlarAudio(item?.tipo === 'audio' ? item : null, estado);
-        controlarTela(item?.tipo === 'tela' ? item : null, estado);
+        controlarTela(['tela', 'site'].includes(item?.tipo) ? item : null, estado);
         preCarregar(item, slide + 1);
       },
     });

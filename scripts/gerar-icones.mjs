@@ -29,4 +29,18 @@ await writeFile('public/icones/icone-192.png', await desenhar(192));
 await writeFile('public/icones/icone-512.png', await desenhar(512));
 await writeFile('public/icones/icone-mascara-512.png', await desenhar(512, { margem: 10 }));
 await writeFile('public/icones/apple-touch-icon.png', await desenhar(180));
+// Ícone do Windows (.ico) com várias medidas, para o atalho da Área de Trabalho.
+const medidas = [16, 32, 48, 64, 128, 256];
+const imagens = await Promise.all(medidas.map((m) => desenhar(m)));
+const cabecalho = Buffer.alloc(6 + medidas.length * 16);
+cabecalho.writeUInt16LE(0, 0); cabecalho.writeUInt16LE(1, 2); cabecalho.writeUInt16LE(medidas.length, 4);
+let deslocamento = cabecalho.length;
+medidas.forEach((m, i) => {
+  const e = 6 + i * 16;
+  cabecalho.writeUInt8(m === 256 ? 0 : m, e); cabecalho.writeUInt8(m === 256 ? 0 : m, e + 1);
+  cabecalho.writeUInt16LE(1, e + 4); cabecalho.writeUInt16LE(32, e + 6);
+  cabecalho.writeUInt32LE(imagens[i].length, e + 8); cabecalho.writeUInt32LE(deslocamento, e + 12);
+  deslocamento += imagens[i].length;
+});
+await writeFile('public/icones/projetor.ico', Buffer.concat([cabecalho, ...imagens]));
 console.log('Ícones gerados em public/icones');

@@ -34,10 +34,15 @@ export function separarEstrofes(letra) {
     .filter(Boolean);
 }
 
+// Tipos com tocar/pausar (ou som) e volume pelo celular: vídeo, áudio, YouTube e tela do computador.
+// 'site' (Univer etc.) aparece no telão pela captura de tela, como a 'tela'.
+export const TIPOS_MIDIA = ['video', 'youtube', 'audio', 'tela', 'site'];
+export const ehMidia = (tipo) => TIPOS_MIDIA.includes(tipo);
+
 // Quantas telas o item tem (usado para avançar e voltar).
 export function totalPartes(item) {
   if (item.tipo === 'musica') return item.estrofes.length;
-  if (['video', 'youtube', 'audio', 'tela'].includes(item.tipo)) return 1;
+  if (ehMidia(item.tipo)) return 1;
   return item.slides.length;
 }
 
@@ -173,6 +178,13 @@ export class Biblioteca {
     if (!videoId && !canal) throw new Error('Link do YouTube não reconhecido.');
     const titulo = String(nome ?? '').trim() || (canal ? 'YouTube ao vivo' : 'Vídeo do YouTube');
     return this.#criar('youtube', titulo, async () => ({ link, ...(videoId ? { videoId } : { canal }) }), { nome: titulo });
+  }
+
+  // Link de um site (Univer Vídeo etc.): abre no computador e aparece no telão pela captura de tela.
+  async salvarSite({ link, nome }) {
+    if (!link) throw new Error('Link não reconhecido.');
+    const titulo = String(nome ?? '').trim() || new URL(link).hostname.replace(/^www\./, '');
+    return this.#criar('site', titulo, async () => ({ link }), { nome: titulo });
   }
 
   async remover(id) {

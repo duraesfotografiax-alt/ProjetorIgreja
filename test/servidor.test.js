@@ -177,3 +177,56 @@ test('a lista única da versão anterior vira a lista de hoje', async () => {
     await rm(pasta, { recursive: true, force: true });
   }
 });
+
+test('link de site (Univer) vira item, abre no computador uma vez e vai para o telão', async () => {
+  const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
+  const abertos = [];
+  const servidor = await criarServidor({
+    pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0, abrirLink: (url) => abertos.push(url),
+  });
+  const base = `http://localhost:${servidor.address().port}`;
+  const socket = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
+  const enviar = (corpo) => fetch(`${base}/api/link`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo),
+  });
+  try {
+    await esperarEstado(socket, () => true);
+
+    // YouTube é reconhecido sozinho, no mesmo campo
+    const yt = (await (await enviar({ link: 'https://youtu.be/dQw4w9WgXcQ', nome: 'Culto', dia: 'dom' })).json()).item;
+    assert.deepEqual([yt.tipo, yt.videoId], ['youtube', 'dQw4w9WgXcQ']);
+
+    // Qualquer outro endereço vira site
+    const resposta = await enviar({ link: 'univervideo.com/watch/live/terapia-do-amor-20h', nome: 'Terapia do Amor', dia: 'seg' });
+    assert.equal(resposta.status, 200);
+    const { item } = await resposta.json();
+    assert.deepEqual([item.tipo, item.nome, item.link], ['site', 'Terapia do Amor', 'https://univervideo.com/watch/live/terapia-do-amor-20h']);
+    assert.equal((await enviar({ link: 'isto não é link' })).status, 400);
+    assert.equal((await enviar({ link: '' })).status, 400);
+    assert.deepEqual(abertos, []); // só guardar não abre nada
+
+    // Ir para o telão abre a página no computador, uma única vez
+    socket.send(JSON.stringify({ acao: 'abrir', id: item.id }));
+    const noAr = await esperarEstado(socket, (m) => m.estado.atual?.id === item.id);
+    assert.equal(noAr.estado.video.tocando, true);
+    assert.deepEqual(abertos, [item.link]);
+    socket.send(JSON.stringify({ acao: 'proximo' }));
+    socket.send(JSON.stringify({ acao: 'telaPreta', ligada: true }));
+    await esperarEstado(socket, (m) => m.estado.telaPreta);
+    assert.equal(abertos.length, 1);
+
+    // Botão "abrir de novo no computador"
+    assert.equal((await fetch(`${base}/api/itens/${item.id}/abrir-no-computador`, { method: 'POST' })).status, 200);
+    assert.equal(abertos.length, 2);
+    assert.equal((await fetch(`${base}/api/itens/${yt.id}/abrir-no-computador`, { method: 'POST' })).status, 400);
+
+    // Endereços para conectar o celular
+    const conexao = await (await fetch(`${base}/api/conexao`)).json();
+    assert.match(conexao.url, /^http:\/\/.+:\d+\/$/);
+    assert.ok(conexao.urlNome === null || /^http:\/\/[a-z0-9-]+\.local:\d+\/$/.test(conexao.urlNome));
+  } finally {
+    socket.close();
+    servidor.close();
+    await rm(pasta, { recursive: true, force: true });
+  }
+});
