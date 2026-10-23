@@ -45,6 +45,16 @@ Em cada item, o botão **⋯** abre as opções: subir e descer na lista, tirar 
 
 O navegador exige que **alguém clique no telão e escolha a janela** uma vez. No Chrome ou Edge: **Guia** (ou **Janela**) → escolha a aba → marque **“Compartilhar áudio da guia”** → Compartilhar. O som da aba sai só pelo telão, e o volume e o **🔇 Silenciar** ficam no celular. Depois, trocar de item e voltar não pede de novo.
 
+### Univer Vídeo e o login
+
+O site abre no **navegador padrão do computador**. O login fica salvo no próprio navegador, e o programa nunca vê nem guarda a senha:
+
+1. Adicione o link `https://www.univervideo.com/br` (＋ Adicionar → Link) e toque em **Mostrar no telão**. A página abre no computador.
+2. **Entre na sua conta uma vez**, marcando "Manter conectado" se houver.
+3. Depois disso, os links do Univer já abrem logados.
+
+Para o navegador não esquecer: entre no **navegador padrão do Windows**, não use janela anônima e não deixe ligada a opção de limpar cookies ao fechar. Se a imagem aparecer **preta** no telão mas o som vier, o site bloqueia a captura de tela.
+
 O telão precisa estar em `http://localhost:8080/telao.html` (é o que o ícone abre). Em outro endereço o navegador não libera a captura.
 
 ## Pastas no computador
