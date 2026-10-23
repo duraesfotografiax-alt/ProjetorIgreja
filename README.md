@@ -22,7 +22,7 @@ O celular e o computador precisam estar **no mesmo Wi-Fi**.
 
 Quatro botões embaixo:
 
-- **📅 Dias**: uma lista para cada dia, de segunda a domingo. Abre no dia de hoje. Toque no **▶** de um item e ele vai para o telão. Toque no nome para ver os slides ou as estrofes e escolher um.
+- **📅 Dias**: uma lista para cada dia, de segunda a domingo. Abre no dia de hoje. Toque no **▶** de um item e ele vai para o telão. Toque no nome para ver os slides ou as estrofes e escolher um. Quando o dia tem mais de um tipo de coisa, aparecem filtros logo abaixo do título (**Tudo · Slides · Vídeos · Áudios · Links · Músicas**, cada um com a quantidade) para separar, por exemplo, só os slides ou só os vídeos daquele dia. A ordem do dia é uma só: **Avançar** continua seguindo ela, e **Subir / Descer** (no ⋯) respeitam o filtro escolhido.
 - **🎵 Músicas**: todas as músicas, com busca por nome ou trecho da letra.
 - **🗂 Mídia**: tudo o que foi enviado (slides, vídeos, áudios, links), com filtro.
 - **＋ Adicionar**: PDF ou imagens, vídeo ou áudio, link, música e tela do computador.

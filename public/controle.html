@@ -235,6 +235,7 @@
         <div><h2 id="nomeDia"></h2><p id="subDia"></p></div>
         <button class="btn-icone" id="bMenuDia" aria-label="Mais opções do dia"></button>
       </div>
+      <div class="filtro" id="filtroDia" hidden></div>
       <div class="lista" id="listaDias"></div>
     </section>
 
@@ -317,7 +318,12 @@
   let vista = 'dias';
   let diaVisto = null;
   let hojeVisto = null;
-  let filtro = 'todos';
+  let filtro = 'todos';     // filtro da aba Mídia
+  let filtroDia = 'todos';  // filtro dentro de cada dia (Slides, Vídeos...)
+  // Grupos para separar o que há numa lista (no dia e na aba Mídia)
+  const GRUPOS = [['todos', 'Tudo', () => true], ['slides', 'Slides', (i) => i.tipo === 'slides'], ['musica', 'Músicas', (i) => i.tipo === 'musica'],
+    ['video', 'Vídeos', (i) => i.tipo === 'video'], ['audio', 'Áudios', (i) => i.tipo === 'audio'], ['links', 'Links', (i) => ['youtube', 'site', 'tela'].includes(i.tipo)]];
+  const passaFiltro = (id) => GRUPOS.find((g) => g[0] === id)[2];
   let previaVisivel = true;
   let contagem = 0;
   let siteModo = null; // como o site no ar aparece: { modo: 'janela' | 'captura' }, ou null enquanto abre
@@ -534,10 +540,21 @@
         texto: ABREV[d], onclick: () => { diaVisto = d; desenharListas(); },
       })));
       const lista = estado.cultos[diaVisto].map(buscar).filter(Boolean);
+      // Separa slides, vídeos, áudios, links e músicas do dia (só aparece se houver mais de um tipo)
+      const grupos = GRUPOS.filter((g) => g[0] !== 'todos' && lista.some(g[2]));
+      if (filtroDia !== 'todos' && !grupos.some((g) => g[0] === filtroDia)) filtroDia = 'todos';
+      $('filtroDia').hidden = grupos.length < 2;
+      $('filtroDia').replaceChildren(...[['todos', 'Tudo', () => true], ...grupos].map(([id, rot, passa]) => h('button', {
+        class: filtroDia === id ? 'ativo' : '', type: 'button', texto: `${rot} ${lista.filter(passa).length}`,
+        onclick: () => { filtroDia = id; desenharListas(); },
+      })));
+      const visiveis = grupos.length < 2 ? lista : lista.filter(passaFiltro(filtroDia));
       $('nomeDia').replaceChildren(...[NOME_DIA[diaVisto], diaVisto === estado.hoje ? h('small', { texto: 'hoje' }) : null].filter(Boolean));
-      $('subDia').textContent = lista.length ? `${lista.length} ${lista.length > 1 ? 'itens' : 'item'}` : 'Lista vazia';
+      $('subDia').textContent = !lista.length ? 'Lista vazia'
+        : visiveis.length < lista.length ? `${visiveis.length} de ${lista.length} itens`
+        : `${lista.length} ${lista.length > 1 ? 'itens' : 'item'}`;
       $('bMenuDia').disabled = false;
-      preencher($('listaDias'), lista.map((item) => linha(item, { vista: 'dias' })), h('div', { class: 'vazio-grande' },
+      preencher($('listaDias'), visiveis.map((item) => linha(item, { vista: 'dias' })), h('div', { class: 'vazio-grande' },
         h('p', { texto: `Nada em ${NOME_DIA[diaVisto]} ainda.` }),
         h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
     }
@@ -553,8 +570,7 @@
     }
 
     if (vista === 'midia') {
-      const grupos = [['todos', 'Tudo', () => true], ['slides', 'Slides', (i) => i.tipo === 'slides'], ['video', 'Vídeos', (i) => i.tipo === 'video'],
-        ['audio', 'Áudios', (i) => i.tipo === 'audio'], ['links', 'Links', (i) => ['youtube', 'site', 'tela'].includes(i.tipo)]];
+      const grupos = GRUPOS.filter((g) => g[0] !== 'musica');
       $('filtroMidia').replaceChildren(...grupos.map(([id, rot]) => h('button', {
         class: filtro === id ? 'ativo' : '', type: 'button', texto: rot, onclick: () => { filtro = id; desenharListas(); },
       })));
@@ -584,10 +600,19 @@
       h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
 
     if (ctx.vista === 'dias' && pos >= 0) {
-      const mover = (p) => { const nova = [...lista]; nova.splice(pos, 1); nova.splice(pos + p, 0, item.id); ws({ acao: 'culto', dia: diaVisto, itens: nova }); fecharFolha(); };
+      // Sobe e desce em relação aos itens que estão aparecendo (se há filtro de Slides ou Vídeos, passa pelo vizinho do mesmo grupo)
+      const visiveis = lista.map(buscar).filter(Boolean).filter(passaFiltro(filtroDia));
+      const posV = visiveis.findIndex((i) => i.id === item.id);
+      const mover = (p) => {
+        const alvo = visiveis[posV + p];
+        const nova = lista.filter((id) => id !== item.id);
+        const k = nova.indexOf(alvo.id);
+        nova.splice(p < 0 ? k : k + 1, 0, item.id);
+        ws({ acao: 'culto', dia: diaVisto, itens: nova }); fecharFolha();
+      };
       opcoes.push(
-        opcao('⬆️', 'Subir na lista', null, () => mover(-1), { disabled: pos === 0 }),
-        opcao('⬇️', 'Descer na lista', null, () => mover(1), { disabled: pos === lista.length - 1 }),
+        opcao('⬆️', 'Subir na lista', null, () => mover(-1), { disabled: posV <= 0 }),
+        opcao('⬇️', 'Descer na lista', null, () => mover(1), { disabled: posV < 0 || posV === visiveis.length - 1 }),
         opcao('➖', 'Tirar deste dia', 'O arquivo continua guardado', () => { ws({ acao: 'culto', dia: diaVisto, itens: lista.filter((id) => id !== item.id) }); fecharFolha(); }),
       );
     }
