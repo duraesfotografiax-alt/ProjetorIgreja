@@ -5,6 +5,8 @@ import { abrirTelao } from './src/abrir.js';
 const porta = Number(process.env.PORTA) || 8080;
 const abrirNavegador = process.argv.includes('--abrir');
 const enderecoTelao = `http://localhost:${porta}/telao.html`;
+// Perfis dos navegadores do programa (o login dos sites fica salvo aqui): não apague nem compartilhe esta pasta.
+const PASTA_NAVEGADOR = path.join(PASTA_RAIZ, 'dados-navegador');
 
 let servidor;
 try {
@@ -12,6 +14,8 @@ try {
     pastaBiblioteca: path.join(PASTA_RAIZ, 'biblioteca'),
     pastaPublica: path.join(PASTA_RAIZ, 'public'),
     pastaDias: path.join(PASTA_RAIZ, 'Pastas do Projetor'),
+    pastaNavegador: PASTA_NAVEGADOR,
+    registrar: (texto) => console.log(`  ${texto}`),
     porta,
   });
 } catch (erro) {
@@ -19,7 +23,7 @@ try {
   console.log('');
   console.log('  O Projetor já está aberto em outra janela.');
   console.log(`  Telão: ${enderecoTelao}`);
-  if (abrirNavegador) abrirTelao(enderecoTelao);
+  if (abrirNavegador) abrirTelao(enderecoTelao, { perfil: path.join(PASTA_NAVEGADOR, 'telao') });
   process.exit(0);
 }
 
@@ -33,4 +37,4 @@ console.log(`  Pastas dos dias:           ${path.join(PASTA_RAIZ, 'Pastas do Pro
 console.log('');
 console.log('  Deixe esta janela aberta (pode minimizar). Para desligar, feche esta janela.');
 
-if (abrirNavegador) abrirTelao(enderecoTelao);
+if (abrirNavegador) abrirTelao(enderecoTelao, { perfil: path.join(PASTA_NAVEGADOR, 'telao') });

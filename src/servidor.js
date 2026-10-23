@@ -12,6 +12,7 @@ import { PastasDosDias } from './pastas.js';
 import { lerLinkYoutube, tituloYoutube } from './youtube.js';
 import { lerLinkSite, tituloSite } from './site.js';
 import { abrirLink as abrirLinkReal, abrirPasta } from './abrir.js';
+import { JanelaSite } from './navegador.js';
 import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
@@ -29,7 +30,11 @@ export function enderecoNaRede() {
 // Item fixo (não é arquivo): mostra no telão uma aba ou janela do computador.
 const ITEM_TELA = { id: 'tela', tipo: 'tela', nome: 'Tela do computador', criadaEm: '' };
 
-export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas, abrirLink = abrirLinkReal }) {
+export async function criarServidor({
+  pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas, pastaNavegador,
+  abrirLink = abrirLinkReal, registrar = () => {},
+  janelaSite = new JanelaSite({ perfil: pastaNavegador && path.join(pastaNavegador, 'site'), registrar }),
+}) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
   const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
   const listarTudo = async () => [ITEM_TELA, ...await biblioteca.listar()];
@@ -48,20 +53,53 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
 
   // Quantos celulares estão conectados (o telão esconde o QR code quando há algum).
   const controles = () => [...wss.clients].filter((c) => c.papel === 'controle' && c.readyState === 1).length;
-  const pacote = () => JSON.stringify({ tipo: 'estado', estado, itens, controles: controles() });
+  // Como o site que está no ar aparece no telão: 'janela' (tela cheia aberta pelo programa) ou 'captura'
+  // (sem Chrome/Edge: abre no navegador padrão e o telão pede para escolher a janela). null = abrindo.
+  let modoSite = null;
+  const siteNoAr = (est) => {
+    const item = est.atual && itens.find((i) => i.id === est.atual.id);
+    return item?.tipo === 'site' ? item : null;
+  };
+  const telaDoTelao = () => [...wss.clients].find((c) => c.papel === 'telao' && c.tela)?.tela;
+  const pacote = () => JSON.stringify({ tipo: 'estado', estado, itens, controles: controles(), site: siteNoAr(estado) ? modoSite : null });
   const transmitir = () => {
     const msg = pacote();
     for (const cliente of wss.clients) if (cliente.readyState === 1) cliente.send(msg);
   };
   const mudarEstado = (novo) => {
     if (novo === estado) return;
-    // Item de site (Univer etc.) indo para o telão: abre a página no computador, para ser escolhida na captura.
-    const noAr = novo.atual && itens.find((i) => i.id === novo.atual.id);
-    if (noAr?.tipo === 'site' && novo.atual.id !== estado.atual?.id) abrirLink(noAr.link);
+    const antes = siteNoAr(estado);
+    const depois = siteNoAr(novo);
     if (novo.cultos !== estado.cultos) writeFile(arquivoCultos, JSON.stringify(novo.cultos, null, 2)).catch(() => {});
     estado = novo;
+    if (depois && depois.id !== antes?.id) abrirSite(depois);          // site foi para o telão
+    else if (!depois && antes) fecharSite();                           // saiu do ar
+    else if (depois && modoSite?.modo === 'janela') janelaSite.ajustar({ volume: novo.volume, tocando: novo.video.tocando });
     transmitir();
   };
+
+  // Mostra um site em tela cheia, sem ninguém mexer no computador. Sem Chrome/Edge (ou se falhar),
+  // abre no navegador padrão e o telão pede para escolher a janela (captura de tela).
+  async function abrirSite(item) {
+    modoSite = null;
+    try {
+      if (!janelaSite.disponivel) throw new Error('sem Chrome ou Edge');
+      await janelaSite.abrir(item.link, { tela: telaDoTelao(), volume: estado.volume, tocando: estado.video.tocando });
+      if (siteNoAr(estado)?.id !== item.id) { await janelaSite.fechar(); return; } // trocaram de item enquanto abria
+      modoSite = { modo: 'janela' };
+    } catch (erro) {
+      registrar(`Não foi possível abrir a janela do site (${erro.message}). Abrindo no navegador padrão.`);
+      modoSite = { modo: 'captura' };
+      abrirLink(item.link);
+    }
+    transmitir();
+  }
+  function fecharSite() {
+    const eraJanela = modoSite?.modo === 'janela';
+    modoSite = null;
+    if (eraJanela) janelaSite.fechar().catch(() => {});
+  }
+  servidor.on('close', () => { janelaSite.fechar?.().catch(() => {}); });
   const recarregar = async () => {
     itens = await listarTudo();
     const novo = ajustarAposRemocao(estado, itens);
@@ -84,6 +122,9 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
       try { comando = JSON.parse(dados); } catch { return; }
       if (comando?.acao === 'ola') {
         socket.papel = comando.papel === 'telao' ? 'telao' : 'controle';
+        // O telão informa onde está (monitor), para o site abrir em tela cheia no mesmo monitor.
+        const t = comando.tela;
+        if (socket.papel === 'telao' && t && [t.x, t.y, t.w, t.h].every(Number.isFinite) && t.w > 0 && t.h > 0) socket.tela = { x: t.x, y: t.y, w: t.w, h: t.h };
         transmitir();
         return;
       }
@@ -197,7 +238,8 @@ export async function criarServidor({ pastaBiblioteca, pastaPublica, porta, past
   app.post('/api/itens/:id/abrir-no-computador', rota(async (req) => {
     const item = itens.find((i) => i.id === req.params.id);
     if (item?.tipo !== 'site') throw new Error('Este item não é um site.');
-    abrirLink(item.link);
+    if (modoSite?.modo === 'janela') await janelaSite.abrir(item.link, { tela: telaDoTelao(), volume: estado.volume, tocando: estado.video.tocando });
+    else abrirLink(item.link);
     return { ok: true };
   }));
 

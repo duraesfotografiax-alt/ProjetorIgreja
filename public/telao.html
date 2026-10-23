@@ -251,7 +251,11 @@
       const { estado, itens } = ultimo;
       if (!estado) return;
       const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
-      controlarTela(['tela', 'site'].includes(item?.tipo) ? item : null, estado);
+      controlarTela(precisaCaptura(item) ? item : null, estado);
+    }
+    // 'tela' sempre usa a captura. 'site' só quando o programa não conseguiu abrir a janela em tela cheia.
+    function precisaCaptura(item) {
+      return item?.tipo === 'tela' || (item?.tipo === 'site' && ultimo.site?.modo === 'captura');
     }
 
     // ---------- YouTube (vídeo ou ao vivo) com o player oficial ----------
@@ -330,10 +334,16 @@
       if (item?.tipo === 'slides' && indice < item.slides.length) new Image().src = urlSlide(item, indice);
     }
 
+    // Onde o telão está (monitor), para a janela de um site abrir em tela cheia no mesmo monitor.
+    function medirTela() {
+      return { x: screen.availLeft ?? 0, y: screen.availTop ?? 0, w: screen.width, h: screen.height };
+    }
+
     const enviar = conectar({
       papel: 'telao',
-      aoReceberEstado(estado, itens, { controles }) {
-        ultimo = { estado, itens, controles };
+      dadosOla: () => ({ tela: medirTela() }),
+      aoReceberEstado(estado, itens, { controles, site }) {
+        ultimo = { estado, itens, controles, site };
         const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
         const slide = estado.atual?.slide ?? 0;
         $('fundo').classList.toggle('escondido', Boolean(item) && item.tipo !== 'audio');
@@ -344,10 +354,14 @@
         controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
         controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
         controlarAudio(item?.tipo === 'audio' ? item : null, estado);
-        controlarTela(['tela', 'site'].includes(item?.tipo) ? item : null, estado);
+        controlarTela(precisaCaptura(item) ? item : null, estado);
         preCarregar(item, slide + 1);
       },
     });
+
+    let temporizadorTela;
+    const avisarOnde = () => { clearTimeout(temporizadorTela); temporizadorTela = setTimeout(() => enviar({ acao: 'ola', papel: 'telao', tela: medirTela() }), 600); };
+    addEventListener('resize', avisarOnde);
 
     // Avisa o celular quando o vídeo termina, para o botão voltar a "Tocar".
     video.onended = () => enviar({ acao: 'video', comando: 'pausar' });

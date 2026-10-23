@@ -37,25 +37,23 @@ Em cada item, o botão **⋯** abre as opções: subir e descer na lista, tirar 
 - **Vídeo ou áudio**: MP4, MOV, WEBM, MP3, M4A, WAV, OGG, AAC, FLAC. O volume é pelo celular.
 - **Link**:
   - **YouTube** (vídeo ou ao vivo): toca direto no telão. Funcionam os links `youtube.com/watch`, `youtu.be`, `youtube.com/live` e `shorts`.
-  - **Outros sites, como o Univer Vídeo**: o site abre no computador e o telão pede para escolher a janela dele (uma vez). O som sai só pelo telão, com o volume pelo celular.
+  - **Outros sites, como o Univer Vídeo**: o programa **abre o site sozinho em tela cheia no computador** (no monitor do telão) e você controla **volume e silenciar** pelo celular. Ninguém precisa ir até o computador, clicar em aba nem duplicar a tela.
 - **Música**: cole a letra. Deixe uma linha em branco entre as estrofes: cada estrofe vira uma tela.
 - **Tela do computador**: mostra uma aba ou janela qualquer do computador no telão.
 
-### Tela do computador e sites (Univer etc.)
+### Sites em tela cheia (Univer etc.)
 
-O navegador exige que **alguém clique no telão e escolha a janela** uma vez. No Chrome ou Edge: **Guia** (ou **Janela**) → escolha a aba → marque **“Compartilhar áudio da guia”** → Compartilhar. O som da aba sai só pelo telão, e o volume e o **🔇 Silenciar** ficam no celular. Depois, trocar de item e voltar não pede de novo.
+Ao tocar no ▶ de um link de site, o programa abre **uma janela do Chrome ou Edge em tela cheia** (no mesmo monitor do telão, se ele estiver aberto) e carrega a página. **Tirar do ar** fecha a janela. Volume e silenciar valem para os vídeos da página, mesmo quando o player fica dentro de outro quadro.
 
-### Univer Vídeo e o login
+**Login (Univer):** o site abre num navegador **do próprio programa**, com perfil guardado na pasta `dados-navegador`. Na **primeira vez**, o site vai pedir login: **entre pelo computador, de preferência antes do culto** (a tela do computador aparece no telão). Marque "Manter conectado" se houver. Depois o login fica salvo. O programa nunca vê nem guarda a senha. A pasta `dados-navegador` guarda a sessão: **não compartilhe nem coloque em lugar público**.
 
-O site abre no **navegador padrão do computador**. O login fica salvo no próprio navegador, e o programa nunca vê nem guarda a senha:
+Se alguma página não começar a tocar sozinha, ou se aparecer um aviso do site, dá para clicar nela com o mouse do computador. Se a imagem aparecer **preta** mas o som vier, o site bloqueia a captura; nesse caso, me avise.
 
-1. Adicione o link `https://www.univervideo.com/br` (＋ Adicionar → Link) e toque em **Mostrar no telão**. A página abre no computador.
-2. **Entre na sua conta uma vez**, marcando "Manter conectado" se houver.
-3. Depois disso, os links do Univer já abrem logados.
+**Sem Chrome nem Edge** (ou se a janela não abrir), o programa abre a página no navegador padrão e o telão pede para escolher a janela (captura de tela), como na **Tela do computador** abaixo.
 
-Para o navegador não esquecer: entre no **navegador padrão do Windows**, não use janela anônima e não deixe ligada a opção de limpar cookies ao fechar. Se a imagem aparecer **preta** no telão mas o som vier, o site bloqueia a captura de tela.
+### Tela do computador (qualquer aba ou janela)
 
-O telão precisa estar em `http://localhost:8080/telao.html` (é o que o ícone abre). Em outro endereço o navegador não libera a captura.
+O item fixo **🖥️ Tela do computador** (＋ Adicionar) mostra uma aba ou janela qualquer. O navegador exige que **alguém clique no telão e escolha a janela** uma vez (Chrome ou Edge: **Guia** ou **Janela** → escolha → marque **“Compartilhar áudio da guia”** → Compartilhar). O som da aba sai só pelo telão, e o volume e o **🔇 Silenciar** ficam no celular. O telão precisa estar em `http://localhost:8080/telao.html` (é o que o ícone abre).
 
 ## Pastas no computador
 
@@ -75,8 +73,8 @@ Coloque o arquivo na pasta do dia (PDF, imagens, vídeo, áudio). Em poucos segu
 ## Salvar e atualizar
 
 - **Fica salvo** no disco do computador, mesmo se desligar: slides, vídeos, áudios, músicas, links, as listas de cada dia e os arquivos das pastas. **Não fica salvo**: o que está no ar agora, tela preta e volume.
-- Tudo está em duas pastas, **`biblioteca`** e **`Pastas do Projetor`**. **Copie-as de vez em quando para um pen drive ou Drive** (se o computador quebrar, perde-se tudo).
-- **Para atualizar**: feche a janela preta, baixe o ZIP novo, **copie para ele as duas pastas** acima e abra o `iniciar-windows.bat`. Faça isso fora do culto (o telão volta ao fundo azul por uns segundos). Se a versão nova precisar de componentes novos, o programa instala sozinho.
+- Tudo está em três pastas: **`biblioteca`**, **`Pastas do Projetor`** e **`dados-navegador`** (o login dos sites, como o Univer). **Copie-as de vez em quando para um pen drive** (se o computador quebrar, perde-se tudo). A `dados-navegador` tem a sessão logada: guarde só em lugar seguro.
+- **Para atualizar**: feche a janela preta, baixe o ZIP novo, **copie para ele as três pastas** acima e abra o `iniciar-windows.bat`. Faça isso fora do culto (o telão volta ao fundo azul por uns segundos). Se a versão nova precisar de componentes novos, o programa instala sozinho.
 - **Apagar** remove o arquivo de vez. **Tirar deste dia** e **Limpar o dia** só tiram da lista; o arquivo continua na aba Mídia.
 
 ## Vários celulares e ícone
@@ -98,7 +96,7 @@ npm test
 node scripts/gerar-icones.mjs   # gera os ícones (celular e Windows)
 ```
 
-- `server.js` inicia o servidor. `src/`: PDF (`pdf.js`), biblioteca (`biblioteca.js`), estado e comandos (`estado.js`), pastas dos dias (`pastas.js`), YouTube (`youtube.js`), sites (`site.js`), abrir coisas no computador (`abrir.js`), servidor HTTP/WebSocket (`servidor.js`).
+- `server.js` inicia o servidor. `src/`: PDF (`pdf.js`), biblioteca (`biblioteca.js`), estado e comandos (`estado.js`), pastas dos dias (`pastas.js`), YouTube (`youtube.js`), sites (`site.js`), janela de site em tela cheia (`navegador.js`), abrir coisas no computador (`abrir.js`), servidor HTTP/WebSocket (`servidor.js`).
 - `public/`: telão (`telao.html`) e app do celular (`controle.html`).
 - `iniciar-windows.bat`, `criar-atalho-windows.bat` e `iniciar-mac.command` abrem o programa.
 

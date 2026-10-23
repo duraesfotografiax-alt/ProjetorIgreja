@@ -178,11 +178,12 @@ test('a lista única da versão anterior vira a lista de hoje', async () => {
   }
 });
 
-test('link de site (Univer) vira item, abre no computador uma vez e vai para o telão', async () => {
+test('sem Chrome/Edge, o link de site abre no navegador padrão uma vez e o telão usa a captura', async () => {
   const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
   const abertos = [];
   const servidor = await criarServidor({
     pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0, abrirLink: (url) => abertos.push(url),
+    janelaSite: { disponivel: false }, // sem Chrome/Edge: cai no navegador padrão + captura
   });
   const base = `http://localhost:${servidor.address().port}`;
   const socket = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
@@ -226,6 +227,63 @@ test('link de site (Univer) vira item, abre no computador uma vez e vai para o t
     assert.ok(conexao.urlNome === null || /^http:\/\/[a-z0-9-]+\.local:\d+\/$/.test(conexao.urlNome));
   } finally {
     socket.close();
+    servidor.close();
+    await rm(pasta, { recursive: true, force: true });
+  }
+});
+
+test('site em tela cheia: o programa abre a janela, segue volume e silenciar, e fecha ao tirar do ar', async () => {
+  const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
+  const chamadas = [];
+  const janelaSite = {
+    disponivel: true,
+    abrir: async (url, opcoes) => { chamadas.push(['abrir', url, opcoes.tela, opcoes.volume]); },
+    ajustar: async (alvo) => { chamadas.push(['ajustar', alvo]); },
+    fechar: async () => { chamadas.push(['fechar']); },
+  };
+  const abertos = [];
+  const servidor = await criarServidor({
+    pastaBiblioteca: pasta, pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0, abrirLink: (u) => abertos.push(u), janelaSite,
+  });
+  const base = `http://localhost:${servidor.address().port}`;
+  const telao = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
+  const celular = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
+  try {
+    // O telão diz onde está (segundo monitor, por exemplo)
+    await esperarEstado(telao, () => true);
+    telao.send(JSON.stringify({ acao: 'ola', papel: 'telao', tela: { x: 1920, y: 0, w: 1280, h: 720 } }));
+    await esperarEstado(celular, () => true);
+    const { item } = await (await fetch(`${base}/api/link`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link: 'univervideo.com/br', nome: 'Univer' }),
+    })).json();
+
+    celular.send(JSON.stringify({ acao: 'abrir', id: item.id }));
+    const noAr = await esperarEstado(celular, (m) => m.site?.modo === 'janela');
+    assert.equal(noAr.estado.atual.id, item.id);
+    assert.deepEqual(chamadas[0], ['abrir', 'https://univervideo.com/br', { x: 1920, y: 0, w: 1280, h: 720 }, 1]);
+    assert.deepEqual(abertos, []); // não usa o navegador padrão
+
+    // Volume e silenciar pelo celular chegam na janela
+    celular.send(JSON.stringify({ acao: 'volume', valor: 0.3 }));
+    await esperarEstado(celular, (m) => m.estado.volume === 0.3);
+    celular.send(JSON.stringify({ acao: 'video', comando: 'pausar' })); // "Silenciar"
+    await esperarEstado(celular, (m) => m.estado.video.tocando === false);
+    assert.deepEqual(chamadas.filter((c) => c[0] === 'ajustar').at(-1), ['ajustar', { volume: 0.3, tocando: false }]);
+
+    // Tirar do ar fecha a janela, e o aviso de modo some
+    celular.send(JSON.stringify({ acao: 'fechar' }));
+    const fora = await esperarEstado(celular, (m) => m.estado.atual === null);
+    assert.equal(fora.site, null);
+    assert.deepEqual(chamadas.at(-1), ['fechar']);
+
+    // Se a janela falhar ao abrir, cai no navegador padrão + captura
+    janelaSite.abrir = async () => { throw new Error('Chrome travou'); };
+    celular.send(JSON.stringify({ acao: 'abrir', id: item.id }));
+    const plano = await esperarEstado(celular, (m) => m.site?.modo === 'captura');
+    assert.equal(plano.site.modo, 'captura');
+    assert.deepEqual(abertos, ['https://univervideo.com/br']);
+  } finally {
+    telao.close(); celular.close();
     servidor.close();
     await rm(pasta, { recursive: true, force: true });
   }

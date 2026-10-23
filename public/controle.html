@@ -320,6 +320,7 @@
   let filtro = 'todos';
   let previaVisivel = true;
   let contagem = 0;
+  let siteModo = null; // como o site no ar aparece: { modo: 'janela' | 'captura' }, ou null enquanto abre
   const abertos = new Map(); // linhas com slides/estrofes abertos (padrão: o item que está no ar)
 
   const buscar = (id) => itens.find((i) => i.id === id);
@@ -328,10 +329,11 @@
 
   // ---------- Conexão com o computador ----------
   const ws = conectar({
-    aoReceberEstado(novoEstado, novosItens, { controles }) {
+    aoReceberEstado(novoEstado, novosItens, { controles, site }) {
       estado = novoEstado;
       itens = novosItens;
       contagem = controles ?? 0;
+      siteModo = site ?? null;
       // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
       if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
       hojeVisto = estado.hoje;
@@ -451,10 +453,11 @@
     }
     $('dicaVivo').hidden = !ehJanela(item);
     if (ehJanela(item)) {
-      $('dicaTexto').textContent = item.tipo === 'site'
-        ? '👉 A página abriu no computador. Clique no telão e escolha a janela dela.'
-        : '👉 Clique no telão e escolha a aba ou janela que quer mostrar.';
-      $('bReabrir').hidden = item.tipo !== 'site';
+      $('dicaTexto').textContent = item.tipo === 'tela' ? '👉 Clique no telão e escolha a aba ou janela que quer mostrar.'
+        : !siteModo ? '⏳ Abrindo o site no computador…'
+        : siteModo.modo === 'janela' ? '✅ O site está em tela cheia no computador. Se pedir login, entre pelo computador (só na primeira vez).'
+        : '👉 A página abriu no computador. Clique no telão e escolha a janela dela.';
+      $('bReabrir').hidden = item.tipo !== 'site' || !siteModo;
     }
     $('bPreta').classList.toggle('ligado', estado.telaPreta);
     $('bPreta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
@@ -785,7 +788,7 @@
     abrirFolha('Adicionar link', seletorDia(),
       h('label', { class: 'rotulo', for: 'linkCampo', texto: 'Link' }), campo, erro,
       h('div', { class: 'botoes' }, guardar, mostrar),
-      h('p', { class: 'nota', html: '<b>YouTube</b> (vídeo ou ao vivo) toca direto no telão. <b>Outros sites</b>, como o Univer, abrem no computador e você escolhe a janela no telão uma vez. O volume é sempre pelo celular. Se o site pedir login, entre uma vez no computador: o navegador guarda a sessão.' }));
+      h('p', { class: 'nota', html: '<b>YouTube</b> (vídeo ou ao vivo) toca direto no telão. <b>Outros sites</b>, como o Univer, abrem sozinhos em tela cheia no computador, sem ninguém mexer nele. Volume e silenciar são pelo celular. Se o site pedir login, entre uma vez pelo computador: o programa guarda a sessão.' }));
     campo.focus();
   }
 
