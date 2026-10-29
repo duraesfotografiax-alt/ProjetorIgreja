@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0b09">
+  <title>Telão Durães</title>
+  <!-- Ícone na tela inicial do celular (abre como aplicativo) -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icones/icone-192.png">
+  <link rel="apple-touch-icon" href="/icones/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Telão">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    /* Padrão Durães: preto quente, branco, laranja do play e a faixa dourada. Botões grandes, pouca coisa na tela. */
+    :root {
+      --fundo: #0e0b09; --c1: #181411; --c2: #221c17; --linha: #302822;
+      --texto: #f6f1ea; --suave: #a89c8f;
+      --laranja: #eb5b02; --ouro: #f3b757; --vivo: #ff3b4a; --ok: #34c38a;
+      --faixa: linear-gradient(90deg, #c43b07, #d9702c 25%, #f3b757 50%, #e99d49 75%, #c23603);
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; background: var(--fundo); color: var(--texto);
+      font: 17px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { border: 0; background: none; cursor: pointer; border-radius: 14px; touch-action: manipulation; }
+    button:disabled { opacity: .35; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    #app { height: 100%; max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; }
+
+    /* ---------- Topo ---------- */
+    .topo { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: calc(10px + env(safe-area-inset-top)) 16px 10px; }
+    .marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .marca img { height: 30px; width: auto; }
+    .marca b { font: 700 18px/1 Georgia, 'Times New Roman', serif; letter-spacing: .16em; }
+    .conexao { display: flex; align-items: center; gap: 10px; }
+    #status { width: 10px; height: 10px; border-radius: 50%; background: var(--vivo); }
+    #status.on { background: var(--ok); }
+    .btn-icone { width: 46px; height: 46px; display: grid; place-items: center; background: var(--c2); }
+    .faixa { height: 3px; background: var(--faixa); opacity: .9; }
+
+    /* ---------- Ao vivo (sempre visível) ---------- */
+    .vivo { background: var(--c1); padding: 12px 14px 12px; border-bottom: 1px solid var(--linha); }
+    .vivo-topo { display: flex; align-items: center; gap: 12px; }
+    .previa { position: relative; flex: none; width: 44%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px;
+      overflow: hidden; display: grid; place-items: center; }
+    .previa img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .previa .letra { width: 100%; height: 100%; display: grid; place-items: center; text-align: center; white-space: pre-line;
+      font-weight: 700; font-size: 11px; line-height: 1.25; padding: 6px 8px; background: radial-gradient(ellipse at center, #1f4fd1, #0a1d5e 70%); }
+    .previa .vazio { color: var(--suave); font-size: 13px; text-align: center; padding: 6px; }
+    .previa .grande { font-size: 34px; }
+    .previa .pret { position: absolute; inset: 0; background: #000; display: grid; place-items: center; font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--suave); }
+    .vivo-info { min-width: 0; flex: 1; }
+    .vivo-info small { display: block; font-size: 12px; font-weight: 800; letter-spacing: .12em; color: var(--suave); }
+    .vivo-info.no-ar small { color: var(--vivo); }
+    .vivo-info b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 19px; line-height: 1.2; margin: 2px 0; }
+    .vivo-info span { display: block; color: var(--suave); font-size: 14px; }
+    .vivo.sem-previa .previa { display: none; }
+
+    .passos { display: grid; grid-template-columns: 1fr 1.8fr; gap: 10px; margin-top: 12px; }
+    .passos button { height: 62px; font-size: 20px; font-weight: 700; background: var(--c2); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .passos .avancar { background: var(--laranja); color: #fff; }
+
+    .barra-midia { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .barra-midia .principal { height: 52px; padding: 0 18px; background: var(--ok); color: #04150e; font-weight: 700; flex: none; }
+    .barra-midia .secundario { height: 52px; width: 52px; background: var(--c2); flex: none; font-size: 20px; }
+    .barra-midia label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; color: var(--suave); }
+    .barra-midia input[type=range] { flex: 1; min-width: 0; accent-color: var(--laranja); height: 36px; }
+    .dica-vivo { margin-top: 10px; font-size: 14px; color: var(--ouro); background: rgba(243, 183, 87, .1); border-radius: 12px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+    .dica-vivo button { flex: none; padding: 8px 12px; background: var(--c2); color: var(--texto); font-size: 14px; font-weight: 600; }
+
+    .atalhos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .atalhos button { height: 46px; font-size: 13px; font-weight: 600; border: 1px solid var(--linha); color: var(--suave); white-space: nowrap; padding: 0 4px; }
+    .vivo.sem-previa .vivo-info small { display: none; }
+    .vivo.sem-previa .vivo-info b { -webkit-line-clamp: 1; }
+    /* Celulares de tela baixa (iPhone SE etc.): painel de cima mais compacto, para sobrar espaço para a lista */
+    @media (max-height: 720px) {
+      .topo { padding-top: calc(6px + env(safe-area-inset-top)); padding-bottom: 6px; }
+      .vivo { padding: 8px 12px 10px; }
+      .previa { width: 38%; }
+      .vivo-info b { font-size: 17px; }
+      .passos { margin-top: 8px; }
+      .passos button { height: 54px; font-size: 19px; }
+      .barra-midia { margin-top: 8px; }
+      .barra-midia .principal, .barra-midia .secundario { height: 46px; }
+      .atalhos { margin-top: 8px; }
+      .atalhos button { height: 40px; }
+      .dica-vivo { margin-top: 8px; padding: 8px 10px; font-size: 13px; }
+    }
+    .atalhos button.ligado { background: var(--vivo); border-color: var(--vivo); color: #fff; }
+
+    /* ---------- Conteúdo ---------- */
+    .conteudo { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 14px 28px; }
+    .dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .dias button { height: 48px; border: 1px solid var(--linha); font-weight: 700; font-size: 15px; color: var(--suave); position: relative; padding: 0; min-width: 0; }
+    .dias button.ativo { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .dias button.hoje::after { content: ''; position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+    .titulo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 12px; }
+    .titulo h2 { margin: 0; font-size: 24px; }
+    .titulo h2 small { color: var(--ok); font-size: 14px; font-weight: 700; margin-left: 8px; }
+    .titulo p { margin: 2px 0 0; color: var(--suave); font-size: 14px; }
+
+    .lista { display: flex; flex-direction: column; gap: 10px; }
+    .linha { background: var(--c1); border: 1px solid var(--linha); border-radius: 18px; overflow: hidden; }
+    .linha.no-ar { border-color: var(--laranja); box-shadow: inset 0 0 0 1px var(--laranja); }
+    .linha-topo { display: flex; align-items: center; gap: 6px; padding: 10px 8px 10px 10px; }
+    .corpo { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; text-align: left; padding: 0; }
+    .capa { width: 84px; aspect-ratio: 16 / 9; border-radius: 10px; background: #000; flex: none; overflow: hidden; display: grid; place-items: center; font-size: 24px; }
+    .capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .capa.musica { background: linear-gradient(135deg, #1f4fd1, #0a1d5e); }
+    .textos { min-width: 0; flex: 1; }
+    .textos b { display: block; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .textos span { display: block; color: var(--suave); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .textos .tag-ar { color: var(--vivo); font-weight: 800; }
+    .tocar { width: 52px; height: 52px; border-radius: 50%; background: var(--laranja); color: #fff; display: grid; place-items: center; flex: none; }
+    .tocar svg { fill: currentColor; stroke: none; width: 22px; height: 22px; margin-left: 3px; }
+    .mais { width: 40px; height: 52px; color: var(--suave); display: grid; place-items: center; flex: none; }
+    .mais svg { fill: currentColor; stroke: none; }
+    .partes { padding: 0 10px 12px; }
+    .miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .mini { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; border: 2px solid transparent; padding: 0; }
+    .mini.atual { border-color: var(--laranja); }
+    .mini.marcado { border-color: var(--ok); }
+    .mini.marcado::after { content: '✓'; position: absolute; top: 3px; left: 4px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: var(--ok); color: #04150e; font-size: 13px; font-weight: 800; }
+    .mini img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .mini span { position: absolute; right: 5px; bottom: 3px; font-size: 12px; font-weight: 800; text-shadow: 0 0 4px #000; }
+    .estrofe { display: block; width: 100%; text-align: left; white-space: pre-line; padding: 12px 14px; background: var(--c2); border: 2px solid transparent; border-radius: 12px; margin-bottom: 8px; font-size: 16px; }
+    .estrofe.atual { border-color: var(--laranja); }
+
+    .vazio-grande { text-align: center; padding: 34px 18px; color: var(--suave); border: 1px dashed var(--linha); border-radius: 18px; }
+    .vazio-grande p { margin: 0 0 16px; }
+    .busca input { width: 100%; }
+    .filtro { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; }
+    .filtro::-webkit-scrollbar { display: none; }
+    .filtro button { flex: none; height: 42px; padding: 0 16px; border: 1px solid var(--linha); border-radius: 999px; font-weight: 600; color: var(--suave); font-size: 15px; }
+    .filtro button.ativo { background: var(--texto); border-color: var(--texto); color: var(--fundo); }
+    .link-pastas { width: 100%; margin-top: 16px; height: 50px; border: 1px solid var(--linha); color: var(--suave); font-size: 15px; }
+    /* Bíblia */
+    .secao-titulo { margin: 18px 2px 8px; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--suave); }
+    .livros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .livros button { height: 52px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 600; font-size: 15px; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .capitulos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .capitulos button { height: 56px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 700; font-size: 18px; }
+    .capitulos button.atual, .livros button.atual { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .caminho { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+    .caminho .voltar { height: 46px; padding: 0 14px; background: var(--c2); font-weight: 600; flex: none; }
+    .caminho b { font-size: 19px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .verso { display: flex; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; background: var(--c1); border: 1px solid var(--linha); border-radius: 14px; margin-bottom: 8px; font-size: 17px; line-height: 1.4; }
+    .verso b { color: var(--ouro); min-width: 2.2ch; flex: none; }
+    .verso.atual { border-color: var(--laranja); box-shadow: inset 0 0 0 1px var(--laranja); }
+    .resultado-ref { border-color: var(--ouro); }
+    .troca-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .troca-cap button { height: 52px; background: var(--c2); font-weight: 600; }
+    .credito { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 28px 0 4px; color: var(--suave); font-size: 12px; opacity: .8; }
+    .credito img { height: 24px; width: auto; }
+    .credito b { font: 700 12px/1 Georgia, 'Times New Roman', serif; letter-spacing: .2em; color: var(--texto); }
+
+    /* ---------- Barra de baixo ---------- */
+    .nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--c1); border-top: 1px solid var(--linha); padding-bottom: env(safe-area-inset-bottom); }
+    .nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 64px; font-size: 12px; font-weight: 600; color: var(--suave); border-radius: 0; }
+    .nav button.ativa { color: var(--laranja); }
+    .nav .adicionar span.bola { width: 52px; height: 52px; border-radius: 50%; background: var(--laranja); color: #fff; display: grid; place-items: center; margin-top: -22px; box-shadow: 0 6px 18px rgba(235, 91, 2, .45); }
+    .nav .adicionar { color: var(--texto); }
+
+    /* ---------- Aviso (mensagens e progresso) ---------- */
+    .aviso { position: fixed; left: 14px; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); max-width: 612px; margin: 0 auto; z-index: 50;
+      background: var(--texto); color: var(--fundo); border-radius: 14px; padding: 12px 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+    .aviso.erro { background: var(--vivo); color: #fff; }
+    .aviso i { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: var(--laranja); }
+
+    /* ---------- Folha (menus e formulários que sobem de baixo) ---------- */
+    dialog#folha { border: 0; padding: 0; background: var(--c1); color: var(--texto); width: 100%; max-width: 640px; max-height: 92dvh;
+      margin: auto auto 0; border-radius: 26px 26px 0 0; overflow: auto; }
+    dialog#folha::backdrop { background: rgba(0, 0, 0, .68); }
+    .folha-in { padding: 18px 16px calc(22px + env(safe-area-inset-bottom)); }
+    .folha-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .folha-topo h3 { margin: 0; font-size: 21px; }
+    .fechar { width: 46px; height: 46px; background: var(--c2); font-size: 18px; flex: none; }
+    .opcao { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; background: var(--c2); border-radius: 16px; margin-bottom: 10px; font-weight: 650; }
+    .opcao .ico { font-size: 26px; width: 34px; text-align: center; flex: none; }
+    .opcao small { display: block; color: var(--suave); font-weight: 400; font-size: 14px; }
+    .opcao.perigo { color: var(--vivo); }
+    .grade-opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .grade-opcoes .opcao { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 6px; margin: 0; min-height: 118px; }
+    .rotulo { display: block; margin: 14px 0 6px; font-size: 14px; font-weight: 600; color: var(--suave); }
+    .campo { width: 100%; background: var(--c2); border: 1px solid var(--linha); border-radius: 14px; padding: 14px; }
+    textarea.campo { min-height: 38dvh; line-height: 1.4; resize: vertical; }
+    .botoes { display: flex; gap: 10px; margin-top: 16px; }
+    .botoes > * { flex: 1; }
+    .botao { height: 56px; border-radius: 16px; background: var(--laranja); color: #fff; font-weight: 700; padding: 0 18px; }
+    .botao.sec { background: var(--c2); color: var(--texto); }
+    .nota { font-size: 14px; color: var(--suave); margin: 10px 2px 0; }
+    .erro-texto { color: var(--vivo); font-size: 14px; min-height: 20px; margin-top: 8px; }
+    .erro-texto:empty { display: none; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chips button { height: 44px; min-width: 52px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 700; color: var(--suave); }
+    .chips button.ativo { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .conectar-qr { display: block; width: min(240px, 66vw); margin: 4px auto 8px; background: #fff; border-radius: 16px; padding: 10px; }
+    .centro { text-align: center; }
+    .endereco { text-align: center; color: var(--suave); font-size: 14px; word-break: break-all; margin: 4px 0; }
+    .passos-lista { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+    .secao { margin-top: 22px; }
+    .secao h4 { margin: 0 0 8px; font-size: 17px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="topo">
+    <div class="marca"><img src="/logo-duraes.png" alt="" width="18" height="30"><b>TELÃO</b></div>
+    <div class="conexao">
+      <span id="status" role="status" aria-label="Sem conexão"></span>
+      <button class="btn-icone" id="bConectar" aria-label="Conectar outro celular e colocar o ícone na tela"></button>
+    </div>
+  </header>
+  <div class="faixa"></div>
+
+  <section class="vivo" id="vivo" aria-label="O que está no telão">
+    <div class="vivo-topo">
+      <div class="previa" id="previa"></div>
+      <div class="vivo-info" id="vivoInfo"><small id="vivoRotulo">NO TELÃO</small><b id="vivoTitulo"></b><span id="vivoSub"></span></div>
+    </div>
+    <div class="passos">
+      <button id="bVoltar" aria-label="Voltar"></button>
+      <button id="bAvancar" class="avancar" aria-label="Avançar"></button>
+    </div>
+    <div class="barra-midia" id="barraMidia" hidden>
+      <button class="principal" id="bTocar"></button>
+      <button class="secundario" id="bReiniciar" aria-label="Voltar ao início">⟲</button>
+      <label>🔊<input id="volume" type="range" min="0" max="1" step="0.05" aria-label="Volume"></label>
+    </div>
+    <div class="dica-vivo" id="dicaVivo" hidden><span id="dicaTexto"></span><button id="bReabrir" hidden>Abrir de novo</button></div>
+    <div class="atalhos">
+      <button id="bPreta">Tela preta</button>
+      <button id="bTirar">Tirar do ar</button>
+      <button id="bPrevia">Prévia: sim</button>
+    </div>
+  </section>
+
+  <main class="conteudo" id="conteudo">
+    <section id="vista-dias">
+      <div class="dias" id="chipsDias" role="tablist" aria-label="Dias da semana"></div>
+      <div class="titulo">
+        <div><h2 id="nomeDia"></h2><p id="subDia"></p></div>
+        <button class="btn-icone" id="bMenuDia" aria-label="Mais opções do dia"></button>
+      </div>
+      <div class="filtro" id="filtroDia" hidden></div>
+      <div class="lista" id="listaDias"></div>
+    </section>
+
+    <section id="vista-musicas" hidden>
+      <div class="titulo"><div><h2>Músicas</h2></div><button class="botao" id="bNovaMusica" style="height:46px">＋ Nova</button></div>
+      <div class="busca"><input class="campo" id="busca" type="search" placeholder="Buscar música ou trecho da letra" autocomplete="off"></div>
+      <div class="lista" id="listaMusicas" style="margin-top:12px"></div>
+    </section>
+
+    <section id="vista-biblia" hidden>
+      <div class="titulo"><div><h2>Bíblia</h2><p id="subBiblia"></p></div><button class="btn-icone" id="bMenuBiblia" aria-label="Mais opções da Bíblia"></button></div>
+      <div class="filtro" id="bVersoes" hidden></div>
+      <input class="campo" id="bBusca" type="search" placeholder="Ex.: João 3:16, ou uma palavra" autocomplete="off" hidden>
+      <div id="bConteudo" style="margin-top:12px"></div>
+    </section>
+
+    <section id="vista-midia" hidden>
+      <div class="titulo"><div><h2>Mídia</h2><p>Tudo o que já foi enviado fica guardado aqui</p></div></div>
+      <div class="filtro" id="filtroMidia"></div>
+      <div class="lista" id="listaMidia"></div>
+      <button class="link-pastas" id="bPastas">📁 Abrir as pastas no computador</button>
+    </section>
+
+    <footer class="credito"><img src="/logo-duraes.png" alt="" width="15" height="24"><span>App feito pela <b>DURÃES</b></span></footer>
+  </main>
+
+  <nav class="nav" aria-label="Menu">
+    <button data-vista="dias" class="ativa" id="navDias"></button>
+    <button data-vista="musicas" id="navMusicas"></button>
+    <button data-vista="biblia" id="navBiblia"></button>
+    <button data-vista="midia" id="navMidia"></button>
+    <button class="adicionar" id="navAdicionar" aria-label="Adicionar"></button>
+  </nav>
+</div>
+
+<div class="aviso" id="aviso" role="status" hidden></div>
+
+<dialog id="folha">
+  <div class="folha-in">
+    <div class="folha-topo"><h3 id="folhaTitulo"></h3><button class="fechar" id="folhaFechar" aria-label="Fechar">✕</button></div>
+    <div id="folhaCorpo"></div>
+  </div>
+</dialog>
+
+<input type="file" id="arqDocs" accept="application/pdf,image/*" multiple hidden>
+<input type="file" id="arqMidia" accept="video/*,audio/*" multiple hidden>
+<input type="file" id="arqBiblia" accept=".csv,.tsv,.txt,.json,.xml,text/*,application/json,application/xml" hidden>
+
+<script type="module">
+  import { conectar, urlSlide } from '/conexao.js';
+
+  // ---------- Básico ----------
+  const $ = (id) => document.getElementById(id);
+  const h = (tag, props = {}, ...filhos) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') el.className = v;
+      else if (k === 'texto') el.textContent = v;
+      else if (k === 'html') el.innerHTML = v;
+      else if (k.startsWith('on')) el[k] = v;
+      else if (v === true) el.setAttribute(k, '');
+      else if (v !== false && v != null) el.setAttribute(k, v);
+    }
+    el.append(...filhos.flat().filter((f) => f != null && f !== false));
+    return el;
+  };
+  const IC = {
+    dias: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    musica: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>',
+    midia: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>',
+    biblia: '<svg viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M12 6v6M9.5 8.5h5"/></svg>',
+    mais: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    celular: '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>',
+    pontos: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+    voltar: '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+    avancar: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
+  };
+  const icone = (nome) => h('span', { html: IC[nome], style: 'display:contents' });
+
+  const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+  const ABREV = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+  const NOME_DIA = { seg: 'Segunda-feira', ter: 'Terça-feira', qua: 'Quarta-feira', qui: 'Quinta-feira', sex: 'Sexta-feira', sab: 'Sábado', dom: 'Domingo' };
+  const MIDIA = ['video', 'youtube', 'audio', 'tela', 'site'];
+  const ehMidia = (item) => MIDIA.includes(item?.tipo);
+  const ehJanela = (item) => item?.tipo === 'tela' || item?.tipo === 'site'; // aparecem no telão pela captura de tela
+
+  let estado = null;
+  let itens = [];
+  let vista = 'dias';
+  let diaVisto = null;
+  let hojeVisto = null;
+  let filtro = 'todos';     // filtro da aba Mídia
+  let filtroDia = 'todos';  // filtro dentro de cada dia (Slides, Vídeos...)
+  // Grupos para separar o que há numa lista (no dia e na aba Mídia)
+  const GRUPOS = [['todos', 'Tudo', () => true], ['slides', 'Slides', (i) => i.tipo === 'slides'], ['musica', 'Músicas', (i) => i.tipo === 'musica'],
+    ['video', 'Vídeos', (i) => i.tipo === 'video'], ['audio', 'Áudios', (i) => i.tipo === 'audio'], ['links', 'Links', (i) => ['youtube', 'site', 'tela'].includes(i.tipo)]];
+  const passaFiltro = (id) => GRUPOS.find((g) => g[0] === id)[2];
+  let previaVisivel = true;
+  let contagem = 0;
+  let siteModo = null; // como o site no ar aparece: { modo: 'janela' | 'captura' }, ou null enquanto abre
+  const abertos = new Map(); // linhas com slides/estrofes abertos (padrão: o item que está no ar)
+
+  const buscar = (id) => itens.find((i) => i.id === id);
+  const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
+  const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : item.tipo === 'biblia' ? item.versiculos.length : ehMidia(item) ? 1 : item.slides.length;
+
+  // ---------- Conexão com o computador ----------
+  const ws = conectar({
+    aoReceberEstado(novoEstado, novosItens, { controles, site }) {
+      estado = novoEstado;
+      itens = novosItens;
+      contagem = controles ?? 0;
+      siteModo = site ?? null;
+      // Começa no dia de hoje e acompanha a virada do dia, se a pessoa estava nele.
+      if (diaVisto === null || diaVisto === hojeVisto) diaVisto = estado.hoje;
+      hojeVisto = estado.hoje;
+      desenhar();
+      atualizarConectar?.();
+    },
+    aoMudarConexao(on) {
+      $('status').classList.toggle('on', on);
+      $('status').setAttribute('aria-label', on ? 'Conectado' : 'Sem conexão');
+    },
+  });
+
+  // ---------- Mensagens ----------
+  let timerAviso;
+  function aviso(texto, { erro = false, pct = null, ms = 3500 } = {}) {
+    const el = $('aviso');
+    el.hidden = false;
+    el.className = 'aviso' + (erro ? ' erro' : '');
+    el.replaceChildren(...[h('span', { texto }), pct != null ? h('i', { style: `width:${pct}%` }) : null].filter(Boolean));
+    clearTimeout(timerAviso);
+    if (pct == null || pct >= 100) timerAviso = setTimeout(() => { el.hidden = true; }, ms);
+  }
+
+  // ---------- Folha que sobe de baixo ----------
+  const folha = $('folha');
+  function abrirFolha(titulo, ...conteudo) {
+    $('folhaTitulo').textContent = titulo;
+    $('folhaCorpo').replaceChildren(...conteudo.flat().filter(Boolean));
+    if (!folha.open) folha.showModal();
+    folha.scrollTop = 0;
+  }
+  const fecharFolha = () => { if (folha.open) folha.close(); atualizarConectar = null; };
+  $('folhaFechar').onclick = fecharFolha;
+  folha.addEventListener('click', (e) => { if (e.target === folha) fecharFolha(); });
+  folha.addEventListener('close', () => { atualizarConectar = null; });
+
+  // Botão que pede um segundo toque antes de apagar.
+  function botaoPerigo(rotulo, confirmacao, acao) {
+    const b = h('button', { class: 'opcao perigo', type: 'button' }, h('span', { class: 'ico', texto: '🗑️' }), h('span', { texto: rotulo }));
+    let armado = false;
+    b.onclick = () => {
+      if (armado) { acao(); return; }
+      armado = true; b.lastChild.textContent = confirmacao;
+      setTimeout(() => { armado = false; b.lastChild.textContent = rotulo; }, 3500);
+    };
+    return b;
+  }
+
+  // ---------- Topo e navegação ----------
+  $('bConectar').append(icone('celular'));
+  $('bMenuDia').append(icone('pontos'));
+  $('bMenuBiblia').append(icone('pontos'));
+  $('bVoltar').append(icone('voltar'));
+  $('bAvancar').append('Avançar ', icone('avancar'));
+  for (const [id, ic, rot] of [['navDias', 'dias', 'Dias'], ['navMusicas', 'musica', 'Músicas'], ['navBiblia', 'biblia', 'Bíblia'], ['navMidia', 'midia', 'Mídia']]) {
+    $(id).append(icone(ic), rot);
+  }
+  $('navAdicionar').append(h('span', { class: 'bola' }, icone('mais')), 'Adicionar');
+  document.querySelectorAll('.nav [data-vista]').forEach((b) => {
+    b.onclick = () => { vista = b.dataset.vista; $('conteudo').scrollTop = 0; desenhar(); if (vista === 'biblia') carregarBiblias(); };
+  });
+
+  // ---------- Ao vivo ----------
+  $('bVoltar').onclick = () => ws({ acao: 'anterior' });
+  $('bAvancar').onclick = () => ws({ acao: 'proximo' });
+  $('bPreta').onclick = () => ws({ acao: 'telaPreta', ligada: !estado?.telaPreta });
+  $('bTirar').onclick = () => ws({ acao: 'fechar' });
+  $('bPrevia').onclick = () => { previaVisivel = !previaVisivel; desenharVivo(); };
+  $('bTocar').onclick = () => ws({ acao: 'video', comando: estado.video.tocando ? 'pausar' : 'tocar' });
+  $('bReiniciar').onclick = () => ws({ acao: 'video', comando: 'reiniciar' });
+  $('volume').oninput = (e) => ws({ acao: 'volume', valor: Number(e.target.value) });
+  $('bReabrir').onclick = async () => {
+    await fetch(`/api/itens/${estado.atual.id}/abrir-no-computador`, { method: 'POST' }).catch(() => {});
+    aviso('Abrindo a página no computador…');
+  };
+
+  let chavePrevia = null;
+  function desenharVivo() {
+    const item = estado.atual && buscar(estado.atual.id);
+    const slide = estado.atual?.slide ?? 0;
+    $('vivo').classList.toggle('sem-previa', !previaVisivel);
+    $('vivoInfo').classList.toggle('no-ar', Boolean(item));
+    $('vivoRotulo').textContent = item ? 'NO AR' : 'NO TELÃO';
+    $('vivoTitulo').textContent = item ? item.nome : 'Nada no ar';
+    $('vivoSub').textContent = !item ? 'Toque em ▶ em qualquer item'
+      : item.tipo === 'slides' ? `Slide ${slide + 1} de ${partes(item)}`
+      : item.tipo === 'musica' ? `Estrofe ${slide + 1} de ${partes(item)}`
+      : item.tipo === 'biblia' ? `Versículo ${slide + 1} de ${partes(item)}`
+      : ehJanela(item) ? (estado.video.tocando ? 'Com som' : 'Som desligado')
+      : (estado.video.tocando ? 'Tocando' : 'Pausado');
+
+    // Prévia (só redesenha quando muda, para não piscar)
+    const chave = [item?.id, slide, estado.telaPreta, estado.video.tocando].join('|');
+    if (chave !== chavePrevia) {
+      chavePrevia = chave;
+      const previa = $('previa');
+      previa.replaceChildren();
+      if (!item) previa.append(h('span', { class: 'vazio', texto: 'Nada no telão' }));
+      else if (item.tipo === 'slides') previa.append(h('img', { src: urlSlide(item, slide), alt: '' }));
+      else if (item.tipo === 'musica') previa.append(h('div', { class: 'letra', texto: item.estrofes[slide] }));
+      else if (item.tipo === 'biblia') previa.append(h('div', { class: 'letra', texto: item.versiculos[slide] }));
+      else if (item.tipo === 'youtube' && item.videoId) previa.append(h('img', { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
+      else previa.append(h('span', { class: 'grande', texto: ICONE_TIPO[item.tipo] }));
+      if (estado.telaPreta) previa.append(h('div', { class: 'pret', texto: 'TELA PRETA' }));
+    }
+
+    // Voltar / Avançar: no fim de um item, segue para o próximo da lista do dia.
+    const lista = estado.atual?.dia ? estado.cultos[estado.atual.dia] : [];
+    const pos = item ? lista.indexOf(item.id) : -1;
+    const vizinho = (p) => pos >= 0 && Boolean(buscar(lista[pos + p]));
+    $('bVoltar').disabled = !item || (slide === 0 && !vizinho(-1));
+    $('bAvancar').disabled = !item || (slide === partes(item) - 1 && !vizinho(1));
+
+    // Som, tocar e pausar (vídeo, áudio, YouTube, tela e site)
+    $('barraMidia').hidden = !ehMidia(item);
+    if (ehMidia(item)) {
+      $('bTocar').textContent = ehJanela(item) ? (estado.video.tocando ? '🔇 Silenciar' : '🔊 Ligar som') : (estado.video.tocando ? '⏸ Pausar' : '▶ Tocar');
+      $('bReiniciar').hidden = ehJanela(item) || Boolean(item.canal);
+      if (document.activeElement !== $('volume')) $('volume').value = estado.volume;
+    }
+    $('dicaVivo').hidden = !ehJanela(item);
+    if (ehJanela(item)) {
+      $('dicaTexto').textContent = item.tipo === 'tela' ? '👉 Clique no telão e escolha a aba ou janela que quer mostrar.'
+        : !siteModo ? '⏳ Abrindo o site no computador…'
+        : siteModo.modo === 'janela' ? '✅ O site está em tela cheia no computador. Se pedir login, entre pelo computador (só na primeira vez).'
+        : '👉 A página abriu no computador. Clique no telão e escolha a janela dela.';
+      $('bReabrir').hidden = item.tipo !== 'site' || !siteModo;
+    }
+    $('bPreta').classList.toggle('ligado', estado.telaPreta);
+    $('bPreta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';
+    $('bTirar').disabled = !item;
+    $('bPrevia').textContent = previaVisivel ? 'Prévia: sim' : 'Prévia: não';
+  }
+
+  // ---------- Listas ----------
+  const ICONE_TIPO = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧', tela: '🖥️', site: '🌐', biblia: '📖' };
+  const descricao = (item) => item.tipo === 'slides' ? `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`
+    : item.tipo === 'musica' ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
+    : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
+    : item.tipo === 'site' ? new URL(item.link).hostname.replace(/^www\./, '')
+    : item.tipo === 'tela' ? 'Aba ou janela do computador'
+    : item.tipo === 'audio' ? 'Áudio' : 'Vídeo';
+
+  function capa(item) {
+    if (item.tipo === 'slides') return h('div', { class: 'capa' }, h('img', { src: urlSlide(item, 0), alt: '', loading: 'lazy' }));
+    if (item.tipo === 'youtube' && item.videoId) return h('div', { class: 'capa' }, h('img', { src: `https://i.ytimg.com/vi/${item.videoId}/mqdefault.jpg`, alt: '', loading: 'lazy' }));
+    return h('div', { class: 'capa' + (item.tipo === 'musica' ? ' musica' : ''), texto: ICONE_TIPO[item.tipo] });
+  }
+
+  // Uma linha de item: toque no ▶ para mandar ao telão; ⋯ para as outras opções.
+  function linha(item, ctx) {
+    const noAr = estado.atual?.id === item.id;
+    const chave = `${ctx.vista}:${item.id}`;
+    const temPartes = item.tipo === 'slides' ? item.slides.length > 1 : item.tipo === 'musica';
+    const aberto = temPartes && (abertos.has(chave) ? abertos.get(chave) : noAr);
+    const dia = ctx.vista === 'dias' ? diaVisto : undefined; // abrir pela lista do dia segue a ordem dela
+    const tocar = () => ws({ acao: 'abrir', id: item.id, slide: 0, dia });
+
+    const sub = [descricao(item), ctx.vista !== 'dias' ? diasDoItem(item).map((d) => ABREV[d]).join(' ') : ''].filter(Boolean).join(' · ');
+    const corpo = h('button', { class: 'corpo', type: 'button', 'aria-expanded': temPartes ? String(aberto) : null },
+      capa(item),
+      h('div', { class: 'textos' }, h('b', { texto: item.nome }),
+        h('span', {}, noAr ? h('span', { class: 'tag-ar', texto: 'NO AR · ', style: 'display:inline' }) : null, sub)));
+    corpo.onclick = temPartes ? () => { abertos.set(chave, !aberto); desenharListas(); } : tocar;
+
+    const el = h('article', { class: 'linha' + (noAr ? ' no-ar' : '') },
+      h('div', { class: 'linha-topo' }, corpo,
+        h('button', { class: 'tocar', type: 'button', 'aria-label': `Mostrar ${item.nome} no telão`, onclick: tocar }, icone('play')),
+        h('button', { class: 'mais', type: 'button', 'aria-label': `Mais opções de ${item.nome}`, onclick: () => menuItem(item, ctx) }, icone('pontos'))));
+
+    if (aberto) {
+      const atual = (i) => noAr && estado.atual.slide === i ? ' atual' : '';
+      const caixa = h('div', { class: 'partes' });
+      if (item.tipo === 'slides') {
+        caixa.append(h('div', { class: 'miniaturas' }, item.slides.map((_, i) =>
+          h('button', { class: 'mini' + atual(i), type: 'button', 'aria-label': `Slide ${i + 1}`, onclick: () => ws({ acao: 'abrir', id: item.id, slide: i, dia }) },
+            h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy' }), h('span', { texto: i + 1 })))));
+      } else {
+        item.estrofes.forEach((estrofe, i) => caixa.append(
+          h('button', { class: 'estrofe' + atual(i), type: 'button', texto: estrofe, onclick: () => ws({ acao: 'abrir', id: item.id, slide: i, dia }) })));
+      }
+      el.append(caixa);
+    }
+    return el;
+  }
+
+  function preencher(container, elementos, vazio) {
+    container.replaceChildren(...(elementos.length ? elementos : [vazio]));
+  }
+
+  const normalizar = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  function desenharListas() {
+    $('vista-dias').hidden = vista !== 'dias';
+    $('vista-musicas').hidden = vista !== 'musicas';
+    $('vista-midia').hidden = vista !== 'midia';
+    $('vista-biblia').hidden = vista !== 'biblia';
+    if (vista === 'biblia') desenharBiblia();
+
+    if (vista === 'dias') {
+      $('chipsDias').replaceChildren(...DIAS.map((d) => h('button', {
+        class: (d === diaVisto ? 'ativo ' : '') + (d === estado.hoje ? 'hoje' : ''), type: 'button', role: 'tab', 'aria-selected': String(d === diaVisto),
+        texto: ABREV[d], onclick: () => { diaVisto = d; desenharListas(); },
+      })));
+      const lista = estado.cultos[diaVisto].map(buscar).filter(Boolean);
+      // Separa slides, vídeos, áudios, links e músicas do dia (só aparece se houver mais de um tipo)
+      const grupos = GRUPOS.filter((g) => g[0] !== 'todos' && lista.some(g[2]));
+      if (filtroDia !== 'todos' && !grupos.some((g) => g[0] === filtroDia)) filtroDia = 'todos';
+      $('filtroDia').hidden = grupos.length < 2;
+      $('filtroDia').replaceChildren(...[['todos', 'Tudo', () => true], ...grupos].map(([id, rot, passa]) => h('button', {
+        class: filtroDia === id ? 'ativo' : '', type: 'button', texto: `${rot} ${lista.filter(passa).length}`,
+        onclick: () => { filtroDia = id; desenharListas(); },
+      })));
+      const visiveis = grupos.length < 2 ? lista : lista.filter(passaFiltro(filtroDia));
+      $('nomeDia').replaceChildren(...[NOME_DIA[diaVisto], diaVisto === estado.hoje ? h('small', { texto: 'hoje' }) : null].filter(Boolean));
+      $('subDia').textContent = !lista.length ? 'Lista vazia'
+        : visiveis.length < lista.length ? `${visiveis.length} de ${lista.length} itens`
+        : `${lista.length} ${lista.length > 1 ? 'itens' : 'item'}`;
+      $('bMenuDia').disabled = false;
+      preencher($('listaDias'), visiveis.map((item) => linha(item, { vista: 'dias' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: `Nada em ${NOME_DIA[diaVisto]} ainda.` }),
+        h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
+    }
+
+    if (vista === 'musicas') {
+      const termo = normalizar($('busca').value);
+      const musicas = itens.filter((i) => i.tipo === 'musica')
+        .filter((m) => !termo || normalizar(`${m.nome} ${m.artista} ${m.letra}`).includes(termo))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      preencher($('listaMusicas'), musicas.map((m) => linha(m, { vista: 'musicas' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: termo ? 'Nenhuma música encontrada.' : 'Nenhuma música ainda.' }),
+        termo ? null : h('button', { class: 'botao', type: 'button', texto: '＋ Nova música', onclick: () => editorMusica() })));
+    }
+
+    if (vista === 'midia') {
+      const grupos = GRUPOS.filter((g) => g[0] !== 'musica');
+      $('filtroMidia').replaceChildren(...grupos.map(([id, rot]) => h('button', {
+        class: filtro === id ? 'ativo' : '', type: 'button', texto: rot, onclick: () => { filtro = id; desenharListas(); },
+      })));
+      const passa = grupos.find((g) => g[0] === filtro)[2];
+      const lista = itens.filter((i) => !['musica', 'biblia'].includes(i.tipo)).filter(passa);
+      preencher($('listaMidia'), lista.map((item) => linha(item, { vista: 'midia' })), h('div', { class: 'vazio-grande' },
+        h('p', { texto: 'Nada por aqui ainda.' }),
+        h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
+    }
+
+    document.querySelectorAll('.nav [data-vista]').forEach((b) => b.classList.toggle('ativa', b.dataset.vista === vista));
+  }
+  $('busca').oninput = desenharListas;
+
+  function desenhar() {
+    if (!estado) return;
+    desenharVivo();
+    desenharListas();
+  }
+
+  // ---------- Menu ⋯ de um item ----------
+  function menuItem(item, ctx) {
+    const lista = estado.cultos[diaVisto];
+    const pos = lista.indexOf(item.id);
+    const opcoes = [];
+    const opcao = (ico, texto, dica, acao, extra = {}) => h('button', { class: 'opcao', type: 'button', onclick: acao, ...extra },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
+
+    if (ctx.vista === 'dias' && pos >= 0) {
+      // Sobe e desce em relação aos itens que estão aparecendo (se há filtro de Slides ou Vídeos, passa pelo vizinho do mesmo grupo)
+      const visiveis = lista.map(buscar).filter(Boolean).filter(passaFiltro(filtroDia));
+      const posV = visiveis.findIndex((i) => i.id === item.id);
+      const mover = (p) => {
+        const alvo = visiveis[posV + p];
+        const nova = lista.filter((id) => id !== item.id);
+        const k = nova.indexOf(alvo.id);
+        nova.splice(p < 0 ? k : k + 1, 0, item.id);
+        ws({ acao: 'culto', dia: diaVisto, itens: nova }); fecharFolha();
+      };
+      opcoes.push(
+        opcao('⬆️', 'Subir na lista', null, () => mover(-1), { disabled: posV <= 0 }),
+        opcao('⬇️', 'Descer na lista', null, () => mover(1), { disabled: posV < 0 || posV === visiveis.length - 1 }),
+        opcao('➖', 'Tirar deste dia', 'O arquivo continua guardado', () => { ws({ acao: 'culto', dia: diaVisto, itens: lista.filter((id) => id !== item.id) }); fecharFolha(); }),
+      );
+    }
+
+    // Em quais dias o item aparece (liga e desliga cada dia)
+    const chips = h('div', { class: 'chips' }, DIAS.map((d) => {
+      const b = h('button', { type: 'button', texto: ABREV[d], class: estado.cultos[d].includes(item.id) ? 'ativo' : '' });
+      b.onclick = () => {
+        const atual = estado.cultos[d];
+        const marcado = atual.includes(item.id);
+        ws({ acao: 'culto', dia: d, itens: marcado ? atual.filter((id) => id !== item.id) : [...atual, item.id] });
+        b.classList.toggle('ativo', !marcado);
+      };
+      return b;
+    }));
+    opcoes.push(h('div', { style: 'margin:6px 0 14px' }, h('span', { class: 'rotulo', texto: 'Mostrar nos dias' }), chips));
+
+    if (item.tipo === 'slides' && item.slides.length > 1) opcoes.push(opcao('⧉', 'Copiar alguns slides para outros dias', 'Escolha só os slides que quiser', () => copiarSlides(item)));
+    if (item.tipo === 'musica') opcoes.push(opcao('✏️', 'Editar a letra', null, () => editorMusica(item)));
+    if (item.tipo === 'site') opcoes.push(opcao('🔁', 'Abrir a página de novo no computador', null, async () => {
+      await fetch(`/api/itens/${item.id}/abrir-no-computador`, { method: 'POST' }).catch(() => {});
+      fecharFolha(); aviso('Abrindo a página no computador…');
+    }));
+    if (item.tipo !== 'tela') opcoes.push(botaoPerigo('Apagar de vez', 'Toque de novo para apagar', async () => {
+      await fetch(`/api/itens/${item.id}`, { method: 'DELETE' }).catch(() => {});
+      fecharFolha();
+    }));
+    abrirFolha(item.nome, ...opcoes);
+  }
+
+  $('bMenuDia').onclick = () => {
+    const lista = estado.cultos[diaVisto];
+    abrirFolha(NOME_DIA[diaVisto],
+      h('button', { class: 'opcao', type: 'button', onclick: () => abrirAdicionar() }, h('span', { class: 'ico', texto: '＋' }), h('span', { texto: 'Adicionar neste dia' })),
+      h('button', { class: 'opcao', type: 'button', disabled: lista.length === 0 }, h('span', { class: 'ico', texto: '🧹' }),
+        h('span', {}, 'Limpar o dia', h('small', { texto: 'Tira todos da lista. Os arquivos continuam guardados.' }))),
+    );
+    const limpar = $('folhaCorpo').children[1];
+    let armado = false;
+    limpar.onclick = () => {
+      if (armado) { ws({ acao: 'culto', dia: diaVisto, itens: [] }); fecharFolha(); return; }
+      armado = true; limpar.querySelector('span:last-child').firstChild.textContent = 'Toque de novo para limpar';
+      setTimeout(() => { armado = false; limpar.querySelector('span:last-child').firstChild.textContent = 'Limpar o dia'; }, 3500);
+    };
+  };
+
+  // ---------- Copiar slides para outros dias ----------
+  function copiarSlides(item) {
+    const escolhidos = new Set();
+    const dias = new Set();
+    const botaoCopiar = h('button', { class: 'botao', type: 'button', disabled: true, texto: 'Copiar' });
+    const grade = h('div', { class: 'miniaturas' }, item.slides.map((_, i) => {
+      const b = h('button', { class: 'mini', type: 'button', 'aria-label': `Slide ${i + 1}` }, h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy' }), h('span', { texto: i + 1 }));
+      b.onclick = () => {
+        escolhidos.has(i) ? escolhidos.delete(i) : escolhidos.add(i);
+        b.classList.toggle('marcado', escolhidos.has(i));
+        botaoCopiar.disabled = escolhidos.size === 0;
+        botaoCopiar.textContent = escolhidos.size ? `Copiar ${escolhidos.size} slide${escolhidos.size > 1 ? 's' : ''}` : 'Copiar';
+      };
+      return b;
+    }));
+    const chips = h('div', { class: 'chips' }, DIAS.map((d) => {
+      const b = h('button', { type: 'button', texto: ABREV[d] });
+      b.onclick = () => { dias.has(d) ? dias.delete(d) : dias.add(d); b.classList.toggle('ativo', dias.has(d)); };
+      return b;
+    }));
+    botaoCopiar.onclick = async () => {
+      botaoCopiar.disabled = true;
+      const resposta = await fetch(`/api/itens/${item.id}/copiar`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slides: [...escolhidos], dias: [...dias] }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      if (!resposta?.ok) { aviso(dados?.erro || 'Não foi possível copiar.', { erro: true }); botaoCopiar.disabled = false; return; }
+      fecharFolha();
+      aviso(dias.size ? `Copiado para ${[...dias].map((d) => ABREV[d]).join(', ')}.` : 'Copiado para a aba Mídia.');
+    };
+    abrirFolha('Copiar slides',
+      h('p', { class: 'nota', style: 'margin:0 0 10px', texto: 'Toque nos slides que quer copiar e escolha os dias.' }), grade,
+      h('span', { class: 'rotulo', texto: 'Copiar para os dias' }), chips,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }), botaoCopiar));
+  }
+
+  // ---------- Música: nova ou editar ----------
+  function editorMusica(musica) {
+    const nome = h('input', { class: 'campo', id: 'mNome', value: musica?.nome ?? '', autocomplete: 'off' });
+    const artista = h('input', { class: 'campo', id: 'mArtista', value: musica?.artista ?? '', autocomplete: 'off' });
+    const letra = h('textarea', { class: 'campo', id: 'mLetra', placeholder: 'Cole a letra aqui' });
+    letra.value = musica?.letra ?? '';
+    const erro = h('div', { class: 'erro-texto' });
+    const salvar = h('button', { class: 'botao', type: 'submit', texto: 'Salvar' });
+    const form = h('form', {},
+      h('label', { class: 'rotulo', for: 'mNome', texto: 'Nome' }), nome,
+      h('label', { class: 'rotulo', for: 'mArtista', texto: 'Artista (opcional)' }), artista,
+      h('label', { class: 'rotulo', for: 'mLetra', texto: 'Letra' }), letra,
+      h('p', { class: 'nota', texto: 'Deixe uma linha em branco entre as estrofes. Cada estrofe vira uma tela.' }), erro,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }), salvar));
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const resposta = await fetch(musica ? `/api/musicas/${musica.id}` : '/api/musicas', {
+        method: musica ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nome.value, artista: artista.value, letra: letra.value }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      if (!resposta?.ok) { erro.textContent = dados?.erro || 'Não foi possível salvar.'; return; }
+      fecharFolha();
+      vista = 'musicas'; abertos.set(`musicas:${dados.musica.id}`, true);
+      aviso('Música salva.');
+      desenhar();
+    };
+    abrirFolha(musica ? 'Editar música' : 'Nova música', form);
+    if (!musica) nome.focus();
+  }
+  $('bNovaMusica').onclick = () => editorMusica();
+
+  // ---------- Adicionar ----------
+  let diaAdicionar = null;
+  function seletorDia() {
+    const select = h('select', { class: 'campo', id: 'diaAdd', 'aria-label': 'Em qual dia' },
+      DIAS.map((d) => h('option', { value: d, texto: NOME_DIA[d] + (d === estado.hoje ? ' (hoje)' : '') })),
+      h('option', { value: '', texto: 'Sem dia (fica só na aba Mídia)' }));
+    select.value = diaAdicionar;
+    select.onchange = () => { diaAdicionar = select.value; };
+    return h('div', {}, h('label', { class: 'rotulo', for: 'diaAdd', texto: 'Adicionar em' }), select);
+  }
+
+  function abrirAdicionar() {
+    diaAdicionar = vista === 'dias' ? diaVisto : estado.hoje;
+    const opcao = (ico, titulo, dica, acao) => h('button', { class: 'opcao', type: 'button', onclick: acao },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, titulo, h('small', { texto: dica })));
+    abrirFolha('Adicionar', seletorDia(), h('div', { class: 'grade-opcoes' },
+      opcao('📄', 'PDF ou imagens', 'O PDF vira slides sozinho', () => $('arqDocs').click()),
+      opcao('🎬', 'Vídeo ou áudio', 'MP4, MP3…', () => $('arqMidia').click()),
+      opcao('🔗', 'Link', 'YouTube, Univer…', () => formularioLink()),
+      opcao('🎵', 'Música', 'Colar a letra', () => editorMusica()),
+    ), h('div', { style: 'margin-top:10px' }, opcao('🖥️', 'Tela do computador', 'Mostrar agora uma aba ou janela', () => { ws({ acao: 'abrir', id: 'tela' }); fecharFolha(); })));
+  }
+  $('navAdicionar').onclick = () => abrirAdicionar();
+
+  $('arqDocs').onchange = (e) => enviarArquivos([...e.target.files], e.target);
+  $('arqMidia').onchange = (e) => enviarArquivos([...e.target.files], e.target);
+
+  // Envio de arquivos com barra de progresso. O PDF é convertido em slides no computador.
+  function enviarArquivos(arquivos, campo) {
+    campo.value = '';
+    if (arquivos.length === 0) return;
+    const dia = diaAdicionar ?? '';
+    fecharFolha();
+    const dados = new FormData();
+    dados.append('dia', dia);
+    arquivos.forEach((a) => dados.append('arquivos', a));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/enviar');
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round((ev.loaded / ev.total) * 100);
+      aviso(pct < 100 ? `Enviando… ${pct}%` : 'Preparando os slides…', { pct: Math.min(pct, 99) });
+    };
+    xhr.onload = () => {
+      let resposta = {};
+      try { resposta = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status !== 200) { aviso(resposta.erro || 'Não foi possível enviar.', { erro: true, ms: 6000 }); return; }
+      const n = resposta.criados.length;
+      aviso(`Pronto! ${n} ${n > 1 ? 'itens adicionados' : 'item adicionado'}${dia ? ` em ${NOME_DIA[dia]}` : ''}.`);
+      if (dia) { vista = 'dias'; diaVisto = dia; }
+      desenhar();
+    };
+    xhr.onerror = () => aviso('Falha na conexão com o computador.', { erro: true, ms: 6000 });
+    aviso('Enviando…', { pct: 0 });
+    xhr.send(dados);
+  }
+
+  // Link: YouTube (vídeo ou ao vivo) toca no telão; outros sites (Univer etc.) abrem no computador.
+  function formularioLink() {
+    const campo = h('input', { class: 'campo', id: 'linkCampo', type: 'text', inputmode: 'url', placeholder: 'Cole aqui o link', autocomplete: 'off', autocapitalize: 'off' });
+    const erro = h('div', { class: 'erro-texto' });
+    const enviarLink = async (mostrar, botao) => {
+      const link = campo.value.trim();
+      erro.textContent = '';
+      if (!link) { erro.textContent = 'Cole o link primeiro.'; return; }
+      botao.disabled = true;
+      const resposta = await fetch('/api/link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ link, dia: diaAdicionar ?? '' }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      botao.disabled = false;
+      if (!resposta?.ok) { erro.textContent = dados?.erro || 'Falha na conexão com o computador.'; return; }
+      fecharFolha();
+      if (diaAdicionar) { vista = 'dias'; diaVisto = diaAdicionar; }
+      if (mostrar) ws({ acao: 'abrir', id: dados.item.id, dia: diaAdicionar || undefined });
+      aviso(mostrar ? 'Link adicionado.' : 'Link guardado.');
+      desenhar();
+    };
+    const mostrar = h('button', { class: 'botao', type: 'button', texto: '▶ Mostrar no telão' });
+    const guardar = h('button', { class: 'botao sec', type: 'button', texto: 'Só guardar' });
+    mostrar.onclick = () => enviarLink(true, mostrar);
+    guardar.onclick = () => enviarLink(false, guardar);
+    abrirFolha('Adicionar link', seletorDia(),
+      h('label', { class: 'rotulo', for: 'linkCampo', texto: 'Link' }), campo, erro,
+      h('div', { class: 'botoes' }, guardar, mostrar),
+      h('p', { class: 'nota', html: '<b>YouTube</b> (vídeo ou ao vivo) toca direto no telão. <b>Outros sites</b>, como o Univer, abrem sozinhos em tela cheia no computador, sem ninguém mexer nele. Volume e silenciar são pelo celular. Se o site pedir login, entre uma vez pelo computador: o programa guarda a sessão.' }));
+    campo.focus();
+  }
+
+  // ---------- Mídia: pastas no computador ----------
+  $('bPastas').onclick = async () => {
+    const resposta = await fetch('/api/abrir-pastas', { method: 'POST' }).catch(() => null);
+    aviso(resposta?.ok ? 'Pastas abertas no computador. Arquivos colocados nelas aparecem aqui sozinhos.' : 'Não foi possível abrir as pastas.', { erro: !resposta?.ok, ms: 5000 });
+  };
+
+  // ---------- Conectar outro celular e colocar o ícone ----------
+  let atualizarConectar = null;
+  let pedidoInstalar = null; // Android/Chrome em conexão segura oferece instalar direto
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pedidoInstalar = e; });
+
+  async function abrirConectar() {
+    const ua = navigator.userAgent;
+    const ehIphone = /iPhone|iPad|iPod/i.test(ua);
+    const ehAndroid = /Android/i.test(ua);
+    const contagemEl = h('p', { class: 'centro', style: 'margin:0 0 8px' });
+    const qr = h('img', { class: 'conectar-qr', alt: 'QR code para conectar outro celular' });
+    const enderecoEl = h('p', { class: 'endereco' });
+    const nomeEl = h('p', { class: 'endereco', hidden: true });
+    const botaoQr = h('button', { class: 'botao sec', type: 'button' });
+    botaoQr.onclick = () => ws({ acao: 'qr', ligado: !estado?.qrNoTelao });
+    atualizarConectar = () => {
+      contagemEl.textContent = contagem === 1 ? '1 celular conectado agora' : `${contagem} celulares conectados agora`;
+      botaoQr.textContent = estado?.qrNoTelao ? 'Tirar o QR do telão' : 'Mostrar o QR no telão';
+    };
+    atualizarConectar();
+
+    const passosIphone = h('div', {}, h('h4', { texto: 'iPhone (Safari)' }), h('ol', { class: 'passos-lista' },
+      h('li', { html: 'Toque em <b>Compartilhar</b> (o quadrado com a seta para cima).' }),
+      h('li', { html: 'Role e toque em <b>Adicionar à Tela de Início</b>.' }),
+      h('li', { html: 'Toque em <b>Adicionar</b>. O ícone “Telão” aparece na tela.' })));
+    const passosAndroid = h('div', {}, h('h4', { texto: 'Android (Chrome)' }), h('ol', { class: 'passos-lista' },
+      h('li', { html: 'Toque nos <b>três pontinhos ⋮</b> no canto de cima.' }),
+      h('li', { html: 'Toque em <b>Adicionar à tela inicial</b> (ou <b>Instalar app</b>).' }),
+      h('li', { html: 'Confirme. O ícone “Telão” aparece na tela.' })));
+    const instalar = h('button', { class: 'botao', type: 'button', texto: 'Instalar o ícone agora', hidden: !pedidoInstalar, style: 'width:100%;margin-bottom:12px' });
+    instalar.onclick = async () => { pedidoInstalar?.prompt(); pedidoInstalar = null; instalar.hidden = true; };
+
+    abrirFolha('Conectar e instalar', contagemEl, qr, enderecoEl, nomeEl,
+      h('p', { class: 'nota centro', texto: 'Outro celular aponta a câmera para este QR. Precisa estar no mesmo Wi-Fi do computador.' }),
+      h('div', { class: 'botoes' }, botaoQr),
+      h('div', { class: 'secao' }, h('h4', { texto: '📲 Ícone na tela do celular' }), instalar,
+        ehAndroid ? null : passosIphone, ehIphone ? null : passosAndroid),
+      h('div', { class: 'credito' }, h('img', { src: '/logo-duraes.png', alt: '', width: 15, height: 24 }), h('span', {}, 'App feito pela ', h('b', { texto: 'DURÃES' }))));
+    try {
+      const { url, urlNome, qrcode } = await (await fetch('/api/conexao')).json();
+      qr.src = qrcode;
+      enderecoEl.textContent = url;
+      if (urlNome) { nomeEl.hidden = false; nomeEl.textContent = `ou, com o nome do computador: ${urlNome}`; }
+    } catch {}
+  }
+  $('bConectar').onclick = abrirConectar;
+
+  // ---------- Bíblia (o programa lê o arquivo da versão que a igreja colocar na pasta "8 - Bíblias") ----------
+  const bib = { carregado: false, carregando: false, versoes: [], erros: [], versao: null, livros: null, livro: null, cap: null, capitulo: null, busca: '', achados: null };
+  let timerBusca;
+  const rotaBiblia = (...partes) => '/api/biblia/' + partes.map(encodeURIComponent).join('/');
+  const postar = (rota, corpo) => fetch(rota, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo ?? {}) });
+
+  async function carregarBiblias(forcar = false) {
+    if (bib.carregando) return;
+    bib.carregando = true;
+    try {
+      const dados = await (await (forcar ? fetch('/api/biblias/atualizar', { method: 'POST' }) : fetch('/api/biblias'))).json();
+      bib.versoes = dados.versoes ?? []; bib.erros = dados.erros ?? [];
+      if (!bib.versoes.some((v) => v.id === bib.versao)) { bib.versao = bib.versoes[0]?.id ?? null; bib.livros = bib.livro = bib.cap = bib.capitulo = null; }
+      if (bib.versao && !bib.livros) bib.livros = await (await fetch(rotaBiblia(bib.versao, 'livros'))).json();
+    } catch { aviso('Não foi possível ler as Bíblias do computador.', { erro: true }); }
+    bib.carregando = false; bib.carregado = true;
+    desenharBiblia();
+  }
+
+  async function escolherVersao(id) {
+    bib.versao = id; bib.livro = bib.cap = bib.capitulo = bib.achados = null;
+    bib.livros = await (await fetch(rotaBiblia(id, 'livros'))).json();
+    if (bib.busca.trim()) await buscarBiblia(); else desenharBiblia();
+  }
+  function abrirLivro(i) { bib.livro = i; bib.cap = bib.capitulo = null; desenharBiblia(); $('conteudo').scrollTop = 0; }
+  async function abrirCapitulo(c, livro = bib.livro) {
+    const r = await fetch(rotaBiblia(bib.versao, livro, c));
+    const dados = await r.json();
+    if (!r.ok) { aviso(dados.erro || 'Capítulo não encontrado.', { erro: true }); return; }
+    bib.livro = livro; bib.cap = c; bib.capitulo = dados; bib.busca = ''; bib.achados = null; $('bBusca').value = '';
+    desenharBiblia(); $('conteudo').scrollTop = 0;
+  }
+  async function mostrarVersiculo(indiceLivro, cap, verso) {
+    const r = await postar('/api/biblia/abrir', { versao: bib.versao, livro: indiceLivro, cap, verso }).catch(() => null);
+    if (!r?.ok) aviso((await r?.json().catch(() => ({})))?.erro || 'Não foi possível mostrar o versículo.', { erro: true });
+  }
+  async function buscarBiblia() {
+    const q = bib.busca.trim();
+    if (!q || !bib.versao) { bib.achados = null; desenharBiblia(); return; }
+    const dados = await (await fetch(rotaBiblia(bib.versao, 'busca') + '?q=' + encodeURIComponent(q))).json().catch(() => null);
+    if (q === bib.busca.trim()) { bib.achados = dados; desenharBiblia(); }
+  }
+  $('bBusca').oninput = (e) => {
+    bib.busca = e.target.value; bib.achados = null;
+    clearTimeout(timerBusca);
+    if (e.target.value.trim()) timerBusca = setTimeout(buscarBiblia, 300);
+    desenharBiblia();
+  };
+
+  const textoRef = (r) => `${r.livro} ${r.cap}${r.de ? ':' + r.de + (r.ate && r.ate !== r.de ? '–' + r.ate : '') : ''}`;
+
+  function desenharBiblia() {
+    const corpo = $('bConteudo');
+    if (!bib.carregado) {
+      if (!bib.carregando) carregarBiblias();
+      corpo.replaceChildren(h('div', { class: 'vazio-grande' }, h('p', { texto: 'Carregando as Bíblias…' })));
+      return;
+    }
+    const semBiblia = bib.versoes.length === 0;
+    $('bVersoes').hidden = bib.versoes.length < 2;
+    $('bBusca').hidden = semBiblia;
+    $('subBiblia').textContent = semBiblia ? 'Nenhuma versão instalada' : bib.versoes.length > 1 ? '' : bib.versao;
+    $('bVersoes').replaceChildren(...bib.versoes.map((v) => h('button', {
+      class: v.id === bib.versao ? 'ativo' : '', type: 'button', texto: v.id, onclick: () => escolherVersao(v.id),
+    })));
+
+    const erros = bib.erros.map((e) => h('p', { class: 'erro-texto', texto: `Não consegui ler ${e.arquivo}: ${e.erro}` }));
+    if (semBiblia) {
+      corpo.replaceChildren(h('div', { class: 'vazio-grande' },
+        h('p', { texto: 'Coloque o arquivo da Bíblia (por exemplo, ARC.csv) na pasta “8 - Bíblias” no computador, ou envie por aqui.' }),
+        h('p', { class: 'nota', texto: 'Formatos: CSV, JSON, XML (Zefania) ou TXT. Use só versões que a igreja tem permissão de usar.' }),
+        ...erros,
+        h('div', { class: 'botoes' }, h('button', { class: 'botao', type: 'button', texto: 'Enviar arquivo', onclick: () => $('arqBiblia').click() }),
+          h('button', { class: 'botao sec', type: 'button', texto: 'Atualizar', onclick: () => carregarBiblias(true) })),
+        h('button', { class: 'link-pastas', type: 'button', texto: '📁 Abrir a pasta no computador', onclick: abrirPastaBiblias })));
+      return;
+    }
+    const q = bib.busca.trim();
+    if (q) corpo.replaceChildren(...visaoBusca(q));
+    else if (bib.capitulo) corpo.replaceChildren(...visaoVersiculos());
+    else if (bib.livro !== null) corpo.replaceChildren(...visaoCapitulos());
+    else corpo.replaceChildren(...visaoLivros(), ...erros);
+  }
+
+  function visaoLivros() {
+    const grupo = (titulo, lista) => lista.length ? [h('div', { class: 'secao-titulo', texto: titulo }),
+      h('div', { class: 'livros' }, lista.map((l) => h('button', { type: 'button', texto: l.nome, onclick: () => abrirLivro(l.i) })))] : [];
+    return [...grupo('Antigo Testamento', bib.livros.filter((l) => l.antigo)), ...grupo('Novo Testamento', bib.livros.filter((l) => !l.antigo))];
+  }
+
+  const caminho = (rotulo, aoVoltar, titulo) => h('div', { class: 'caminho' },
+    h('button', { class: 'voltar', type: 'button', texto: `‹ ${rotulo}`, onclick: aoVoltar }), h('b', { texto: titulo }));
+
+  function visaoCapitulos() {
+    const livro = bib.livros[bib.livro];
+    return [caminho('Livros', () => { bib.livro = null; desenharBiblia(); }, livro.nome),
+      h('div', { class: 'capitulos' }, Array.from({ length: livro.capitulos }, (_, i) =>
+        h('button', { type: 'button', texto: i + 1, onclick: () => abrirCapitulo(i + 1) })))];
+  }
+
+  function visaoVersiculos() {
+    const c = bib.capitulo;
+    const noAr = estado.atual?.id === 'biblia' ? buscar('biblia') : null;
+    const atual = (i) => noAr && noAr.versao === bib.versao && noAr.indiceLivro === c.indiceLivro && noAr.cap === c.cap && estado.atual.slide === i;
+    return [caminho(c.livro, () => { bib.capitulo = null; bib.cap = null; desenharBiblia(); }, `${c.livro} ${c.cap}`),
+      ...c.versiculos.map((t, i) => t ? h('button', { class: 'verso' + (atual(i) ? ' atual' : ''), type: 'button', onclick: () => mostrarVersiculo(c.indiceLivro, c.cap, i + 1) },
+        h('b', { texto: i + 1 }), h('span', { texto: t })) : null),
+      h('div', { class: 'troca-cap' },
+        h('button', { type: 'button', texto: '‹ Capítulo anterior', disabled: c.cap <= 1, onclick: () => abrirCapitulo(c.cap - 1, c.indiceLivro) }),
+        h('button', { type: 'button', texto: 'Próximo capítulo ›', disabled: c.cap >= c.capitulos, onclick: () => abrirCapitulo(c.cap + 1, c.indiceLivro) }))];
+  }
+
+  function visaoBusca(q) {
+    const a = bib.achados;
+    if (!a) return [h('div', { class: 'vazio-grande' }, h('p', { texto: 'Buscando…' }))];
+    const saida = [];
+    if (a.referencia) {
+      const r = a.referencia;
+      saida.push(h('button', { class: 'verso resultado-ref', type: 'button',
+        onclick: () => r.de ? mostrarVersiculo(r.indiceLivro, r.cap, r.de) : abrirCapitulo(r.cap, r.indiceLivro) },
+      h('b', { texto: '📖' }), h('span', {}, h('b', { texto: textoRef(r) }), ' ', r.de ? r.versiculos.join(' ') : '(abrir o capítulo)')));
+      if (r.de) saida.push(h('button', { class: 'link-pastas', style: 'margin:0 0 10px', type: 'button', texto: `Ver o capítulo ${r.livro} ${r.cap}`, onclick: () => abrirCapitulo(r.cap, r.indiceLivro) }));
+    }
+    for (const r of a.resultados) {
+      saida.push(h('button', { class: 'verso', type: 'button', onclick: () => mostrarVersiculo(r.indiceLivro, r.cap, r.verso) },
+        h('span', {}, h('b', { texto: `${r.livro} ${r.cap}:${r.verso}` }), ' ', r.texto)));
+    }
+    if (saida.length === 0) saida.push(h('div', { class: 'vazio-grande' }, h('p', { texto: `Nada encontrado para “${q}”.` })));
+    return saida;
+  }
+
+  async function abrirPastaBiblias() {
+    const r = await postar('/api/biblias/abrir-pasta').catch(() => null);
+    aviso(r?.ok ? 'Pasta aberta no computador. Coloque o arquivo da Bíblia e toque em Atualizar.' : 'Não foi possível abrir a pasta.', { erro: !r?.ok, ms: 5000 });
+  }
+  $('bMenuBiblia').onclick = () => {
+    const opcao = (ico, texto, dica, acao) => h('button', { class: 'opcao', type: 'button', onclick: acao },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
+    abrirFolha('Bíblia',
+      opcao('🔄', 'Atualizar a lista', 'Procura arquivos novos na pasta do computador', () => { fecharFolha(); carregarBiblias(true); }),
+      opcao('⬆️', 'Enviar arquivo da Bíblia', 'CSV, JSON, XML ou TXT, pelo celular', () => $('arqBiblia').click()),
+      opcao('📁', 'Abrir a pasta no computador', null, () => { fecharFolha(); abrirPastaBiblias(); }),
+      bib.versoes.length ? h('p', { class: 'nota', texto: `Instaladas: ${bib.versoes.map((v) => `${v.id} (${v.versiculos.toLocaleString('pt-BR')} versículos)`).join(', ')}.` }) : null);
+  };
+  $('arqBiblia').onchange = async (e) => {
+    const arquivo = e.target.files[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    fecharFolha();
+    aviso('Lendo a Bíblia…', { pct: 60 });
+    const dados = new FormData();
+    dados.append('arquivo', arquivo);
+    const r = await fetch('/api/biblias', { method: 'POST', body: dados }).catch(() => null);
+    const resposta = await r?.json().catch(() => ({}));
+    if (!r?.ok) { aviso(resposta?.erro || 'Não foi possível enviar o arquivo.', { erro: true, ms: 8000 }); return; }
+    aviso('Bíblia adicionada.');
+    bib.versoes = resposta.versoes; bib.erros = resposta.erros ?? [];
+    await escolherVersao(arquivo.name.replace(/\.[^.]+$/, '')).catch(() => carregarBiblias());
+  };
+</script>
+</body>
+</html>
