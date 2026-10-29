@@ -143,12 +143,28 @@
     .filtro button { flex: none; height: 42px; padding: 0 16px; border: 1px solid var(--linha); border-radius: 999px; font-weight: 600; color: var(--suave); font-size: 15px; }
     .filtro button.ativo { background: var(--texto); border-color: var(--texto); color: var(--fundo); }
     .link-pastas { width: 100%; margin-top: 16px; height: 50px; border: 1px solid var(--linha); color: var(--suave); font-size: 15px; }
+    /* Bíblia */
+    .secao-titulo { margin: 18px 2px 8px; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--suave); }
+    .livros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .livros button { height: 52px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 600; font-size: 15px; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .capitulos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .capitulos button { height: 56px; border: 1px solid var(--linha); border-radius: 12px; font-weight: 700; font-size: 18px; }
+    .capitulos button.atual, .livros button.atual { background: var(--laranja); border-color: var(--laranja); color: #fff; }
+    .caminho { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; }
+    .caminho .voltar { height: 46px; padding: 0 14px; background: var(--c2); font-weight: 600; flex: none; }
+    .caminho b { font-size: 19px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .verso { display: flex; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; background: var(--c1); border: 1px solid var(--linha); border-radius: 14px; margin-bottom: 8px; font-size: 17px; line-height: 1.4; }
+    .verso b { color: var(--ouro); min-width: 2.2ch; flex: none; }
+    .verso.atual { border-color: var(--laranja); box-shadow: inset 0 0 0 1px var(--laranja); }
+    .resultado-ref { border-color: var(--ouro); }
+    .troca-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .troca-cap button { height: 52px; background: var(--c2); font-weight: 600; }
     .credito { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 28px 0 4px; color: var(--suave); font-size: 12px; opacity: .8; }
     .credito img { height: 24px; width: auto; }
     .credito b { font: 700 12px/1 Georgia, 'Times New Roman', serif; letter-spacing: .2em; color: var(--texto); }
 
     /* ---------- Barra de baixo ---------- */
-    .nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--c1); border-top: 1px solid var(--linha); padding-bottom: env(safe-area-inset-bottom); }
+    .nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--c1); border-top: 1px solid var(--linha); padding-bottom: env(safe-area-inset-bottom); }
     .nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 64px; font-size: 12px; font-weight: 600; color: var(--suave); border-radius: 0; }
     .nav button.ativa { color: var(--laranja); }
     .nav .adicionar span.bola { width: 52px; height: 52px; border-radius: 50%; background: var(--laranja); color: #fff; display: grid; place-items: center; margin-top: -22px; box-shadow: 0 6px 18px rgba(235, 91, 2, .45); }
@@ -245,6 +261,13 @@
       <div class="lista" id="listaMusicas" style="margin-top:12px"></div>
     </section>
 
+    <section id="vista-biblia" hidden>
+      <div class="titulo"><div><h2>Bíblia</h2><p id="subBiblia"></p></div><button class="btn-icone" id="bMenuBiblia" aria-label="Mais opções da Bíblia"></button></div>
+      <div class="filtro" id="bVersoes" hidden></div>
+      <input class="campo" id="bBusca" type="search" placeholder="Ex.: João 3:16, ou uma palavra" autocomplete="off" hidden>
+      <div id="bConteudo" style="margin-top:12px"></div>
+    </section>
+
     <section id="vista-midia" hidden>
       <div class="titulo"><div><h2>Mídia</h2><p>Tudo o que já foi enviado fica guardado aqui</p></div></div>
       <div class="filtro" id="filtroMidia"></div>
@@ -258,6 +281,7 @@
   <nav class="nav" aria-label="Menu">
     <button data-vista="dias" class="ativa" id="navDias"></button>
     <button data-vista="musicas" id="navMusicas"></button>
+    <button data-vista="biblia" id="navBiblia"></button>
     <button data-vista="midia" id="navMidia"></button>
     <button class="adicionar" id="navAdicionar" aria-label="Adicionar"></button>
   </nav>
@@ -274,6 +298,7 @@
 
 <input type="file" id="arqDocs" accept="application/pdf,image/*" multiple hidden>
 <input type="file" id="arqMidia" accept="video/*,audio/*" multiple hidden>
+<input type="file" id="arqBiblia" accept=".csv,.tsv,.txt,.json,.xml,text/*,application/json,application/xml" hidden>
 
 <script type="module">
   import { conectar, urlSlide } from '/conexao.js';
@@ -297,6 +322,7 @@
     dias: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
     musica: '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>',
     midia: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg>',
+    biblia: '<svg viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M12 6v6M9.5 8.5h5"/></svg>',
     mais: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
     celular: '<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
     play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>',
@@ -331,7 +357,7 @@
 
   const buscar = (id) => itens.find((i) => i.id === id);
   const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
-  const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : ehMidia(item) ? 1 : item.slides.length;
+  const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : item.tipo === 'biblia' ? item.versiculos.length : ehMidia(item) ? 1 : item.slides.length;
 
   // ---------- Conexão com o computador ----------
   const ws = conectar({
@@ -391,14 +417,15 @@
   // ---------- Topo e navegação ----------
   $('bConectar').append(icone('celular'));
   $('bMenuDia').append(icone('pontos'));
+  $('bMenuBiblia').append(icone('pontos'));
   $('bVoltar').append(icone('voltar'));
   $('bAvancar').append('Avançar ', icone('avancar'));
-  for (const [id, ic, rot] of [['navDias', 'dias', 'Dias'], ['navMusicas', 'musica', 'Músicas'], ['navMidia', 'midia', 'Mídia']]) {
+  for (const [id, ic, rot] of [['navDias', 'dias', 'Dias'], ['navMusicas', 'musica', 'Músicas'], ['navBiblia', 'biblia', 'Bíblia'], ['navMidia', 'midia', 'Mídia']]) {
     $(id).append(icone(ic), rot);
   }
   $('navAdicionar').append(h('span', { class: 'bola' }, icone('mais')), 'Adicionar');
   document.querySelectorAll('.nav [data-vista]').forEach((b) => {
-    b.onclick = () => { vista = b.dataset.vista; $('conteudo').scrollTop = 0; desenhar(); };
+    b.onclick = () => { vista = b.dataset.vista; $('conteudo').scrollTop = 0; desenhar(); if (vista === 'biblia') carregarBiblias(); };
   });
 
   // ---------- Ao vivo ----------
@@ -426,6 +453,7 @@
     $('vivoSub').textContent = !item ? 'Toque em ▶ em qualquer item'
       : item.tipo === 'slides' ? `Slide ${slide + 1} de ${partes(item)}`
       : item.tipo === 'musica' ? `Estrofe ${slide + 1} de ${partes(item)}`
+      : item.tipo === 'biblia' ? `Versículo ${slide + 1} de ${partes(item)}`
       : ehJanela(item) ? (estado.video.tocando ? 'Com som' : 'Som desligado')
       : (estado.video.tocando ? 'Tocando' : 'Pausado');
 
@@ -438,6 +466,7 @@
       if (!item) previa.append(h('span', { class: 'vazio', texto: 'Nada no telão' }));
       else if (item.tipo === 'slides') previa.append(h('img', { src: urlSlide(item, slide), alt: '' }));
       else if (item.tipo === 'musica') previa.append(h('div', { class: 'letra', texto: item.estrofes[slide] }));
+      else if (item.tipo === 'biblia') previa.append(h('div', { class: 'letra', texto: item.versiculos[slide] }));
       else if (item.tipo === 'youtube' && item.videoId) previa.append(h('img', { src: `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`, alt: '' }));
       else previa.append(h('span', { class: 'grande', texto: ICONE_TIPO[item.tipo] }));
       if (estado.telaPreta) previa.append(h('div', { class: 'pret', texto: 'TELA PRETA' }));
@@ -472,7 +501,7 @@
   }
 
   // ---------- Listas ----------
-  const ICONE_TIPO = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧', tela: '🖥️', site: '🌐' };
+  const ICONE_TIPO = { slides: '🖼️', musica: '🎵', video: '🎬', youtube: '📺', audio: '🎧', tela: '🖥️', site: '🌐', biblia: '📖' };
   const descricao = (item) => item.tipo === 'slides' ? `${item.slides.length} slide${item.slides.length > 1 ? 's' : ''}`
     : item.tipo === 'musica' ? [item.artista, `${item.estrofes.length} estrofes`].filter(Boolean).join(' · ')
     : item.tipo === 'youtube' ? (item.canal ? 'YouTube ao vivo' : 'YouTube')
@@ -533,6 +562,8 @@
     $('vista-dias').hidden = vista !== 'dias';
     $('vista-musicas').hidden = vista !== 'musicas';
     $('vista-midia').hidden = vista !== 'midia';
+    $('vista-biblia').hidden = vista !== 'biblia';
+    if (vista === 'biblia') desenharBiblia();
 
     if (vista === 'dias') {
       $('chipsDias').replaceChildren(...DIAS.map((d) => h('button', {
@@ -575,7 +606,7 @@
         class: filtro === id ? 'ativo' : '', type: 'button', texto: rot, onclick: () => { filtro = id; desenharListas(); },
       })));
       const passa = grupos.find((g) => g[0] === filtro)[2];
-      const lista = itens.filter((i) => i.tipo !== 'musica').filter(passa);
+      const lista = itens.filter((i) => !['musica', 'biblia'].includes(i.tipo)).filter(passa);
       preencher($('listaMidia'), lista.map((item) => linha(item, { vista: 'midia' })), h('div', { class: 'vazio-grande' },
         h('p', { texto: 'Nada por aqui ainda.' }),
         h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
@@ -869,6 +900,166 @@
     } catch {}
   }
   $('bConectar').onclick = abrirConectar;
+
+  // ---------- Bíblia (o programa lê o arquivo da versão que a igreja colocar na pasta "8 - Bíblias") ----------
+  const bib = { carregado: false, carregando: false, versoes: [], erros: [], versao: null, livros: null, livro: null, cap: null, capitulo: null, busca: '', achados: null };
+  let timerBusca;
+  const rotaBiblia = (...partes) => '/api/biblia/' + partes.map(encodeURIComponent).join('/');
+  const postar = (rota, corpo) => fetch(rota, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo ?? {}) });
+
+  async function carregarBiblias(forcar = false) {
+    if (bib.carregando) return;
+    bib.carregando = true;
+    try {
+      const dados = await (await (forcar ? fetch('/api/biblias/atualizar', { method: 'POST' }) : fetch('/api/biblias'))).json();
+      bib.versoes = dados.versoes ?? []; bib.erros = dados.erros ?? [];
+      if (!bib.versoes.some((v) => v.id === bib.versao)) { bib.versao = bib.versoes[0]?.id ?? null; bib.livros = bib.livro = bib.cap = bib.capitulo = null; }
+      if (bib.versao && !bib.livros) bib.livros = await (await fetch(rotaBiblia(bib.versao, 'livros'))).json();
+    } catch { aviso('Não foi possível ler as Bíblias do computador.', { erro: true }); }
+    bib.carregando = false; bib.carregado = true;
+    desenharBiblia();
+  }
+
+  async function escolherVersao(id) {
+    bib.versao = id; bib.livro = bib.cap = bib.capitulo = bib.achados = null;
+    bib.livros = await (await fetch(rotaBiblia(id, 'livros'))).json();
+    if (bib.busca.trim()) await buscarBiblia(); else desenharBiblia();
+  }
+  function abrirLivro(i) { bib.livro = i; bib.cap = bib.capitulo = null; desenharBiblia(); $('conteudo').scrollTop = 0; }
+  async function abrirCapitulo(c, livro = bib.livro) {
+    const r = await fetch(rotaBiblia(bib.versao, livro, c));
+    const dados = await r.json();
+    if (!r.ok) { aviso(dados.erro || 'Capítulo não encontrado.', { erro: true }); return; }
+    bib.livro = livro; bib.cap = c; bib.capitulo = dados; bib.busca = ''; bib.achados = null; $('bBusca').value = '';
+    desenharBiblia(); $('conteudo').scrollTop = 0;
+  }
+  async function mostrarVersiculo(indiceLivro, cap, verso) {
+    const r = await postar('/api/biblia/abrir', { versao: bib.versao, livro: indiceLivro, cap, verso }).catch(() => null);
+    if (!r?.ok) aviso((await r?.json().catch(() => ({})))?.erro || 'Não foi possível mostrar o versículo.', { erro: true });
+  }
+  async function buscarBiblia() {
+    const q = bib.busca.trim();
+    if (!q || !bib.versao) { bib.achados = null; desenharBiblia(); return; }
+    const dados = await (await fetch(rotaBiblia(bib.versao, 'busca') + '?q=' + encodeURIComponent(q))).json().catch(() => null);
+    if (q === bib.busca.trim()) { bib.achados = dados; desenharBiblia(); }
+  }
+  $('bBusca').oninput = (e) => {
+    bib.busca = e.target.value; bib.achados = null;
+    clearTimeout(timerBusca);
+    if (e.target.value.trim()) timerBusca = setTimeout(buscarBiblia, 300);
+    desenharBiblia();
+  };
+
+  const textoRef = (r) => `${r.livro} ${r.cap}${r.de ? ':' + r.de + (r.ate && r.ate !== r.de ? '–' + r.ate : '') : ''}`;
+
+  function desenharBiblia() {
+    const corpo = $('bConteudo');
+    if (!bib.carregado) {
+      if (!bib.carregando) carregarBiblias();
+      corpo.replaceChildren(h('div', { class: 'vazio-grande' }, h('p', { texto: 'Carregando as Bíblias…' })));
+      return;
+    }
+    const semBiblia = bib.versoes.length === 0;
+    $('bVersoes').hidden = bib.versoes.length < 2;
+    $('bBusca').hidden = semBiblia;
+    $('subBiblia').textContent = semBiblia ? 'Nenhuma versão instalada' : bib.versoes.length > 1 ? '' : bib.versao;
+    $('bVersoes').replaceChildren(...bib.versoes.map((v) => h('button', {
+      class: v.id === bib.versao ? 'ativo' : '', type: 'button', texto: v.id, onclick: () => escolherVersao(v.id),
+    })));
+
+    const erros = bib.erros.map((e) => h('p', { class: 'erro-texto', texto: `Não consegui ler ${e.arquivo}: ${e.erro}` }));
+    if (semBiblia) {
+      corpo.replaceChildren(h('div', { class: 'vazio-grande' },
+        h('p', { texto: 'Coloque o arquivo da Bíblia (por exemplo, ARC.csv) na pasta “8 - Bíblias” no computador, ou envie por aqui.' }),
+        h('p', { class: 'nota', texto: 'Formatos: CSV, JSON, XML (Zefania) ou TXT. Use só versões que a igreja tem permissão de usar.' }),
+        ...erros,
+        h('div', { class: 'botoes' }, h('button', { class: 'botao', type: 'button', texto: 'Enviar arquivo', onclick: () => $('arqBiblia').click() }),
+          h('button', { class: 'botao sec', type: 'button', texto: 'Atualizar', onclick: () => carregarBiblias(true) })),
+        h('button', { class: 'link-pastas', type: 'button', texto: '📁 Abrir a pasta no computador', onclick: abrirPastaBiblias })));
+      return;
+    }
+    const q = bib.busca.trim();
+    if (q) corpo.replaceChildren(...visaoBusca(q));
+    else if (bib.capitulo) corpo.replaceChildren(...visaoVersiculos());
+    else if (bib.livro !== null) corpo.replaceChildren(...visaoCapitulos());
+    else corpo.replaceChildren(...visaoLivros(), ...erros);
+  }
+
+  function visaoLivros() {
+    const grupo = (titulo, lista) => lista.length ? [h('div', { class: 'secao-titulo', texto: titulo }),
+      h('div', { class: 'livros' }, lista.map((l) => h('button', { type: 'button', texto: l.nome, onclick: () => abrirLivro(l.i) })))] : [];
+    return [...grupo('Antigo Testamento', bib.livros.filter((l) => l.antigo)), ...grupo('Novo Testamento', bib.livros.filter((l) => !l.antigo))];
+  }
+
+  const caminho = (rotulo, aoVoltar, titulo) => h('div', { class: 'caminho' },
+    h('button', { class: 'voltar', type: 'button', texto: `‹ ${rotulo}`, onclick: aoVoltar }), h('b', { texto: titulo }));
+
+  function visaoCapitulos() {
+    const livro = bib.livros[bib.livro];
+    return [caminho('Livros', () => { bib.livro = null; desenharBiblia(); }, livro.nome),
+      h('div', { class: 'capitulos' }, Array.from({ length: livro.capitulos }, (_, i) =>
+        h('button', { type: 'button', texto: i + 1, onclick: () => abrirCapitulo(i + 1) })))];
+  }
+
+  function visaoVersiculos() {
+    const c = bib.capitulo;
+    const noAr = estado.atual?.id === 'biblia' ? buscar('biblia') : null;
+    const atual = (i) => noAr && noAr.versao === bib.versao && noAr.indiceLivro === c.indiceLivro && noAr.cap === c.cap && estado.atual.slide === i;
+    return [caminho(c.livro, () => { bib.capitulo = null; bib.cap = null; desenharBiblia(); }, `${c.livro} ${c.cap}`),
+      ...c.versiculos.map((t, i) => t ? h('button', { class: 'verso' + (atual(i) ? ' atual' : ''), type: 'button', onclick: () => mostrarVersiculo(c.indiceLivro, c.cap, i + 1) },
+        h('b', { texto: i + 1 }), h('span', { texto: t })) : null),
+      h('div', { class: 'troca-cap' },
+        h('button', { type: 'button', texto: '‹ Capítulo anterior', disabled: c.cap <= 1, onclick: () => abrirCapitulo(c.cap - 1, c.indiceLivro) }),
+        h('button', { type: 'button', texto: 'Próximo capítulo ›', disabled: c.cap >= c.capitulos, onclick: () => abrirCapitulo(c.cap + 1, c.indiceLivro) }))];
+  }
+
+  function visaoBusca(q) {
+    const a = bib.achados;
+    if (!a) return [h('div', { class: 'vazio-grande' }, h('p', { texto: 'Buscando…' }))];
+    const saida = [];
+    if (a.referencia) {
+      const r = a.referencia;
+      saida.push(h('button', { class: 'verso resultado-ref', type: 'button',
+        onclick: () => r.de ? mostrarVersiculo(r.indiceLivro, r.cap, r.de) : abrirCapitulo(r.cap, r.indiceLivro) },
+      h('b', { texto: '📖' }), h('span', {}, h('b', { texto: textoRef(r) }), ' ', r.de ? r.versiculos.join(' ') : '(abrir o capítulo)')));
+      if (r.de) saida.push(h('button', { class: 'link-pastas', style: 'margin:0 0 10px', type: 'button', texto: `Ver o capítulo ${r.livro} ${r.cap}`, onclick: () => abrirCapitulo(r.cap, r.indiceLivro) }));
+    }
+    for (const r of a.resultados) {
+      saida.push(h('button', { class: 'verso', type: 'button', onclick: () => mostrarVersiculo(r.indiceLivro, r.cap, r.verso) },
+        h('span', {}, h('b', { texto: `${r.livro} ${r.cap}:${r.verso}` }), ' ', r.texto)));
+    }
+    if (saida.length === 0) saida.push(h('div', { class: 'vazio-grande' }, h('p', { texto: `Nada encontrado para “${q}”.` })));
+    return saida;
+  }
+
+  async function abrirPastaBiblias() {
+    const r = await postar('/api/biblias/abrir-pasta').catch(() => null);
+    aviso(r?.ok ? 'Pasta aberta no computador. Coloque o arquivo da Bíblia e toque em Atualizar.' : 'Não foi possível abrir a pasta.', { erro: !r?.ok, ms: 5000 });
+  }
+  $('bMenuBiblia').onclick = () => {
+    const opcao = (ico, texto, dica, acao) => h('button', { class: 'opcao', type: 'button', onclick: acao },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
+    abrirFolha('Bíblia',
+      opcao('🔄', 'Atualizar a lista', 'Procura arquivos novos na pasta do computador', () => { fecharFolha(); carregarBiblias(true); }),
+      opcao('⬆️', 'Enviar arquivo da Bíblia', 'CSV, JSON, XML ou TXT, pelo celular', () => $('arqBiblia').click()),
+      opcao('📁', 'Abrir a pasta no computador', null, () => { fecharFolha(); abrirPastaBiblias(); }),
+      bib.versoes.length ? h('p', { class: 'nota', texto: `Instaladas: ${bib.versoes.map((v) => `${v.id} (${v.versiculos.toLocaleString('pt-BR')} versículos)`).join(', ')}.` }) : null);
+  };
+  $('arqBiblia').onchange = async (e) => {
+    const arquivo = e.target.files[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    fecharFolha();
+    aviso('Lendo a Bíblia…', { pct: 60 });
+    const dados = new FormData();
+    dados.append('arquivo', arquivo);
+    const r = await fetch('/api/biblias', { method: 'POST', body: dados }).catch(() => null);
+    const resposta = await r?.json().catch(() => ({}));
+    if (!r?.ok) { aviso(resposta?.erro || 'Não foi possível enviar o arquivo.', { erro: true, ms: 8000 }); return; }
+    aviso('Bíblia adicionada.');
+    bib.versoes = resposta.versoes; bib.erros = resposta.erros ?? [];
+    await escolherVersao(arquivo.name.replace(/\.[^.]+$/, '')).catch(() => carregarBiblias());
+  };
 </script>
 </body>
 </html>

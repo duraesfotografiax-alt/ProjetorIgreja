@@ -13,6 +13,7 @@ import { lerLinkYoutube, tituloYoutube } from './youtube.js';
 import { lerLinkSite, tituloSite } from './site.js';
 import { abrirLink as abrirLinkReal, abrirPasta } from './abrir.js';
 import { JanelaSite } from './navegador.js';
+import { PastaDeBiblias, lerBiblia } from './biblia.js';
 import { estadoInicial, aplicarComando, ajustarAposRemocao, adicionarAoDia, diaDaSemana } from './estado.js';
 
 const LIMITE_ARQUIVO = 4 * 1024 * 1024 * 1024; // 4 GB por arquivo (vídeos)
@@ -32,12 +33,17 @@ const ITEM_TELA = { id: 'tela', tipo: 'tela', nome: 'Tela do computador', criada
 
 export async function criarServidor({
   pastaBiblioteca, pastaPublica, porta, pastaDias, intervaloPastas, pastaNavegador,
+  pastaBiblias = pastaDias && path.join(pastaDias, '8 - Bíblias'),
   abrirLink = abrirLinkReal, registrar = () => {},
   janelaSite = new JanelaSite({ perfil: pastaNavegador && path.join(pastaNavegador, 'site'), registrar }),
 }) {
   const biblioteca = new Biblioteca(pastaBiblioteca);
   const arquivoCultos = path.join(pastaBiblioteca, 'cultos.json');
-  const listarTudo = async () => [ITEM_TELA, ...await biblioteca.listar()];
+  // Versículo no ar: item temporário com o capítulo aberto (não é arquivo, não fica salvo).
+  let itemBiblia = null;
+  const listarTudo = async () => [ITEM_TELA, ...(itemBiblia ? [itemBiblia] : []), ...await biblioteca.listar()];
+  const biblias = new PastaDeBiblias(pastaBiblias ?? path.join(os.tmpdir(), 'projetor-sem-biblias'));
+  if (pastaBiblias) await biblias.iniciar();
   let itens = await listarTudo();
   let estado = ajustarAposRemocao(estadoInicial(await lerCultos(pastaBiblioteca)), itens);
 
@@ -100,6 +106,10 @@ export async function criarServidor({
     if (eraJanela) janelaSite.fechar().catch(() => {});
   }
   servidor.on('close', () => { janelaSite.fechar?.().catch(() => {}); });
+  // Percebe arquivos de Bíblia colocados na pasta, sem precisar reiniciar.
+  const olharBiblias = setInterval(() => biblias.verificar().catch(() => {}), 5000);
+  olharBiblias.unref();
+  servidor.on('close', () => clearInterval(olharBiblias));
   const recarregar = async () => {
     itens = await listarTudo();
     const novo = ajustarAposRemocao(estado, itens);
@@ -255,6 +265,75 @@ export async function criarServidor({
     if (novo !== estado) mudarEstado(novo);
     else transmitir();
     return { item };
+  }));
+
+  // ---------- Bíblia (o programa não traz texto: lê os arquivos da pasta "8 - Bíblias") ----------
+  const versao = (id) => {
+    const b = biblias.versoes.get(String(id));
+    if (!b) throw new Error('Versão da Bíblia não encontrada. Toque em Atualizar ou coloque o arquivo na pasta.');
+    return b;
+  };
+  app.get('/api/biblias', rota(async () => {
+    await biblias.verificar();
+    return { versoes: biblias.lista(), erros: biblias.erros, pasta: pastaBiblias ?? null };
+  }));
+  app.post('/api/biblias/atualizar', rota(async () => { await biblias.recarregar(); return { versoes: biblias.lista(), erros: biblias.erros }; }));
+  app.post('/api/biblias/abrir-pasta', rota(async () => {
+    if (!pastaBiblias) throw new Error('Pasta das Bíblias desligada.');
+    abrirPasta(pastaBiblias);
+    return { ok: true };
+  }));
+  // Enviar o arquivo da Bíblia pelo celular: confere se dá para ler antes de guardar.
+  app.post('/api/biblias', upload.single('arquivo'), rota(async (req) => {
+    if (!pastaBiblias) throw new Error('Pasta das Bíblias desligada.');
+    if (!req.file) throw new Error('Escolha o arquivo da Bíblia.');
+    const nome = path.basename(Buffer.from(req.file.originalname, 'latin1').toString('utf8'));
+    try {
+      if (!/\.(csv|tsv|txt|json|xml)$/i.test(nome)) throw new Error('Formato não aceito. Use CSV, JSON, XML ou TXT.');
+      lerBiblia(await readFile(req.file.path, 'utf8'), nome); // se não conseguir ler, avisa e não guarda
+      await mkdir(pastaBiblias, { recursive: true });
+      await writeFile(path.join(pastaBiblias, nome), await readFile(req.file.path));
+    } finally {
+      await rm(req.file.path, { force: true });
+    }
+    await biblias.recarregar();
+    return { versoes: biblias.lista(), erros: biblias.erros };
+  }));
+  app.get('/api/biblia/:versao/livros', rota(async (req) => versao(req.params.versao).livros.map((l, i) => ({
+    i, nome: l.nome, abrev: l.abrev, capitulos: l.capitulos.length, antigo: l.posicao >= 0 && l.posicao < 39,
+  }))));
+  app.get('/api/biblia/:versao/busca', rota(async (req) => {
+    const b = versao(req.params.versao);
+    const q = String(req.query.q ?? '');
+    const ref = b.resolver(q);
+    const resultado = { referencia: null, resultados: [] };
+    if (ref) {
+      const cap = b.capitulo(ref.indiceLivro, ref.cap);
+      const de = ref.de ?? 1; const ate = Math.min(ref.ate ?? ref.de ?? cap.versiculos.length, cap.versiculos.length);
+      resultado.referencia = { ...ref, livro: cap.livro.nome, de, ate, versiculos: cap.versiculos.slice(de - 1, ate) };
+    }
+    resultado.resultados = b.buscar(q);
+    return resultado;
+  }));
+  app.get('/api/biblia/:versao/:livro/:cap', rota(async (req) => {
+    const c = versao(req.params.versao).capitulo(Number(req.params.livro), Number(req.params.cap));
+    if (!c) throw new Error('Capítulo não encontrado.');
+    return { livro: c.livro.nome, indiceLivro: Number(req.params.livro), cap: c.cap, capitulos: versao(req.params.versao).livros[Number(req.params.livro)].capitulos.length, versiculos: c.versiculos };
+  }));
+  // Mostra um versículo no telão (o capítulo inteiro fica carregado: Avançar e Voltar passam de versículo em versículo).
+  app.post('/api/biblia/abrir', rota(async (req) => {
+    const b = versao(req.body?.versao);
+    const c = b.capitulo(Number(req.body?.livro), Number(req.body?.cap));
+    if (!c) throw new Error('Capítulo não encontrado.');
+    const verso = Math.min(Math.max(Number(req.body?.verso) || 1, 1), c.versiculos.length);
+    itemBiblia = {
+      id: 'biblia', tipo: 'biblia', nome: `${c.livro.nome} ${c.cap} · ${b.versao}`, versao: b.versao, livro: c.livro.nome,
+      indiceLivro: Number(req.body.livro), cap: c.cap, versiculos: c.versiculos, criadaEm: '',
+    };
+    itens = await listarTudo();
+    mudarEstado(aplicarComando(estado, { acao: 'abrir', id: 'biblia', slide: verso - 1 }, itens));
+    transmitir();
+    return { ok: true };
   }));
 
   app.post('/api/musicas', rota(async (req) => {

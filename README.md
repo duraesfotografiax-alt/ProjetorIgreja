@@ -70,6 +70,14 @@ Coloque o arquivo na pasta do dia (PDF, imagens, vídeo, áudio). Em poucos segu
 
 **Fundo da tela**: quando nada está no ar, o telão mostra um fundo azul. Para trocar, coloque uma imagem em `9 - Fundo da tela` (vale a mais recente).
 
+## Bíblia
+
+O programa **não traz texto bíblico**: ele lê o arquivo da versão que a igreja tem permissão de usar (ARC, NVI, NTLH…).
+
+1. Coloque o arquivo em `Pastas do Projetor/8 - Bíblias` (o nome do arquivo vira o nome da versão, ex.: `ARC.csv`), **ou** na aba Bíblia do celular, menu ⋯ → *Enviar arquivo da Bíblia*.
+2. Formatos aceitos: CSV (`livro;capitulo;versiculo;texto`), JSON, XML (Zefania) e TXT.
+3. Na aba Bíblia escolha livro, capítulo e toque no versículo: ele aparece no telão com a referência em dourado. *Avançar/Voltar* passam os versículos. Também dá para digitar "jo 3:16" ou uma palavra.
+
 ## Salvar e atualizar
 
 - **Fica salvo** no disco do computador, mesmo se desligar: slides, vídeos, áudios, músicas, links, as listas de cada dia e os arquivos das pastas. **Não fica salvo**: o que está no ar agora, tela preta e volume.

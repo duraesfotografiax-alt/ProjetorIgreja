@@ -43,6 +43,7 @@ export const ehMidia = (tipo) => TIPOS_MIDIA.includes(tipo);
 export function totalPartes(item) {
   if (item.tipo === 'musica') return item.estrofes.length;
   if (ehMidia(item.tipo)) return 1;
+  if (item.tipo === 'biblia') return item.versiculos.length;
   return item.slides.length;
 }
 

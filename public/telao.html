@@ -18,13 +18,16 @@
 
     /* Letra de música: texto branco grande sobre fundo escuro */
     #letra {
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
       background: radial-gradient(ellipse at center, #1d2a4a 0%, #0b0f1c 75%);
       opacity: 0; transition: opacity .35s ease;
     }
     #letra.visivel { opacity: 1; }
+    /* Bíblia: a referência (João 3:16 · ARC) aparece embaixo do versículo */
+    #referencia { color: #f3b757; font: 600 4.4vh/1.2 system-ui, 'Segoe UI', Roboto, sans-serif; letter-spacing: .04em; transition: opacity .25s ease; }
+    #referencia:empty { display: none; }
     #texto {
-      width: 88vw; max-height: 84vh; color: #fff; text-align: center; white-space: pre-line;
+      width: 88vw; color: #fff; text-align: center; white-space: pre-line;
       font: 700 8vh/1.25 system-ui, 'Segoe UI', Roboto, sans-serif;
       text-shadow: 0 .04em .12em rgba(0, 0, 0, .8); transition: opacity .25s ease;
     }
@@ -70,7 +73,7 @@
   <div id="fundo"></div>
   <img id="a" class="camada" alt="">
   <img id="b" class="camada" alt="">
-  <div id="letra"><div id="texto"></div></div>
+  <div id="letra"><div id="texto"></div><div id="referencia"></div></div>
   <video id="video" class="camada" playsinline preload="auto"></video>
   <audio id="audio" preload="auto"></audio>
   <video id="tela" class="camada" playsinline autoplay></video>
@@ -134,22 +137,27 @@
     }
 
     // Letra: diminui a fonte até a estrofe caber na tela.
-    function mostrarLetra(texto) {
+    function mostrarLetra(texto, referencia = '') {
       const caixa = $('letra');
       caixa.classList.toggle('visivel', texto !== null);
-      if (texto === null || $('texto').dataset.texto === texto) return;
+      const chave = `${referencia}|${texto}`;
+      if (texto === null || $('texto').dataset.chave === chave) return;
       const el = $('texto');
-      el.style.opacity = 0;
+      const ref = $('referencia');
+      el.style.opacity = 0; ref.style.opacity = 0;
       setTimeout(() => {
-        el.dataset.texto = texto;
+        el.dataset.chave = chave;
         el.textContent = texto;
+        ref.textContent = referencia;
+        // Diminui a letra até o texto caber na tela (com a referência embaixo, sobra menos altura).
+        const altura = innerHeight * (referencia ? 0.68 : 0.84);
         let tamanho = 9;
         el.style.fontSize = `${tamanho}vh`;
-        while (tamanho > 3 && (el.scrollHeight > innerHeight * 0.84 || el.scrollWidth > el.clientWidth)) {
+        while (tamanho > 2.5 && (el.scrollHeight > altura || el.scrollWidth > el.clientWidth)) {
           tamanho -= 0.5;
           el.style.fontSize = `${tamanho}vh`;
         }
-        el.style.opacity = 1;
+        el.style.opacity = 1; ref.style.opacity = 1;
       }, 200);
     }
 
@@ -350,7 +358,9 @@
         mostrarConectar();
         $('preta').classList.toggle('ligada', estado.telaPreta);
         mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
-        mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide] : null);
+        mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide]
+          : item?.tipo === 'biblia' ? item.versiculos[slide] : null,
+        item?.tipo === 'biblia' ? `${item.livro} ${item.cap}:${slide + 1} · ${item.versao}` : '');
         controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
         controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
         controlarAudio(item?.tipo === 'audio' ? item : null, estado);

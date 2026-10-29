@@ -288,3 +288,60 @@ test('site em tela cheia: o programa abre a janela, segue volume e silenciar, e 
     await rm(pasta, { recursive: true, force: true });
   }
 });
+
+test('Bíblia: lê os arquivos da pasta, navega, busca, mostra o versículo no telão e aceita arquivo enviado pelo celular', async () => {
+  const pasta = await mkdtemp(path.join(tmpdir(), 'projetor-srv-'));
+  const pastaBiblias = path.join(pasta, 'Bíblias');
+  await mkdir(pastaBiblias);
+  // Versículos INVENTADOS
+  await writeFile(path.join(pastaBiblias, 'TESTE.csv'),
+    'livro;capitulo;versiculo;texto\nGênesis;1;1;Primeiro de teste.\nGênesis;1;2;Segundo de teste.\nJoão;3;16;Texto inventado sobre amor.\nJoão;3;17;Mais um texto de teste.\n');
+  await writeFile(path.join(pastaBiblias, 'quebrada.json'), '{ nao e json');
+  const servidor = await criarServidor({ pastaBiblioteca: path.join(pasta, 'lib'), pastaPublica: path.join(PASTA_RAIZ, 'public'), porta: 0, pastaBiblias, janelaSite: { disponivel: false } });
+  const base = `http://localhost:${servidor.address().port}`;
+  const socket = new WebSocket(`ws://localhost:${servidor.address().port}/ws`);
+  const get = async (rota) => (await fetch(`${base}${rota}`)).json();
+  try {
+    await esperarEstado(socket, () => true);
+    const lista = await get('/api/biblias');
+    assert.deepEqual(lista.versoes.map((v) => [v.id, v.versiculos]), [['TESTE', 4]]);
+    assert.equal(lista.erros[0].arquivo, 'quebrada.json');
+
+    const livros = await get('/api/biblia/TESTE/livros');
+    assert.deepEqual(livros.map((l) => [l.nome, l.capitulos, l.antigo]), [['Gênesis', 1, true], ['João', 3, false]]);
+    assert.deepEqual((await get('/api/biblia/TESTE/1/3')).versiculos.slice(15), ['Texto inventado sobre amor.', 'Mais um texto de teste.']);
+    assert.equal((await fetch(`${base}/api/biblia/NAO/livros`)).status, 400);
+
+    const busca = await get('/api/biblia/TESTE/busca?q=' + encodeURIComponent('jo 3:16-17'));
+    assert.deepEqual([busca.referencia.livro, busca.referencia.de, busca.referencia.ate, busca.referencia.versiculos.length], ['João', 16, 17, 2]);
+    assert.equal((await get('/api/biblia/TESTE/busca?q=amor')).resultados[0].cap, 3);
+
+    // Mostrar o versículo 16 no telão: o capítulo todo fica carregado e Avançar passa para o 17
+    const noAr = esperarEstado(socket, (m) => m.estado.atual?.id === 'biblia');
+    await fetch(`${base}/api/biblia/abrir`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versao: 'TESTE', livro: 1, cap: 3, verso: 16 }) });
+    const m = await noAr;
+    const item = m.itens.find((i) => i.id === 'biblia');
+    assert.deepEqual([m.estado.atual.slide, item.nome, item.versiculos.length], [15, 'João 3 · TESTE', 17]);
+    socket.send(JSON.stringify({ acao: 'proximo' }));
+    assert.equal((await esperarEstado(socket, (x) => x.estado.atual?.slide === 16)).estado.atual.id, 'biblia');
+
+    // Arquivo enviado pelo celular: confere se dá para ler, e recusa o que não dá
+    const bom = new FormData();
+    bom.append('arquivo', new Blob(['Rute;1;1;Texto de teste de Rute.\n']), 'OUTRA.csv');
+    assert.equal((await fetch(`${base}/api/biblias`, { method: 'POST', body: bom })).status, 200);
+    assert.deepEqual((await get('/api/biblias')).versoes.map((v) => v.id), ['OUTRA', 'TESTE']);
+    const ruim = new FormData();
+    ruim.append('arquivo', new Blob(['isto não é uma Bíblia']), 'RUIM.csv');
+    const resposta = await fetch(`${base}/api/biblias`, { method: 'POST', body: ruim });
+    assert.equal(resposta.status, 400);
+    assert.match((await resposta.json()).erro, /Não encontrei versículos/);
+    const formato = new FormData();
+    formato.append('arquivo', new Blob(['x']), 'biblia.pdf');
+    assert.equal((await fetch(`${base}/api/biblias`, { method: 'POST', body: formato })).status, 400);
+    assert.deepEqual((await get('/api/biblias')).versoes.map((v) => v.id), ['OUTRA', 'TESTE']);
+  } finally {
+    socket.close();
+    servidor.close();
+    await rm(pasta, { recursive: true, force: true });
+  }
+});
