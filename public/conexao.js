@@ -2,6 +2,7 @@
 export function conectar({ aoReceberEstado, aoMudarConexao, papel = 'controle', dadosOla }) {
   let socket;
   let fila = [];
+  let inicioVisto = null;
 
   function abrir() {
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -14,7 +15,12 @@ export function conectar({ aoReceberEstado, aoMudarConexao, papel = 'controle', 
     };
     socket.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      if (msg.tipo === 'estado') aoReceberEstado(msg.estado, msg.itens, { controles: msg.controles, site: msg.site });
+      if (msg.tipo === 'estado') {
+        // Programa foi atualizado/reiniciado: recarrega a página para pegar a versão nova, sem ler QR de novo.
+        if (inicioVisto && msg.inicio !== inicioVisto) { location.reload(); return; }
+        inicioVisto = msg.inicio;
+        aoReceberEstado(msg.estado, msg.itens, { controles: msg.controles, site: msg.site });
+      }
     };
     socket.onclose = () => {
       aoMudarConexao?.(false);

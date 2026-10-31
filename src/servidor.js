@@ -49,6 +49,7 @@ export async function criarServidor({
 
   const app = express();
   const servidor = http.createServer(app);
+  const inicio = Date.now(); // muda a cada vez que o programa é ligado: o celular se atualiza sozinho
   const wss = new WebSocketServer({ server: servidor, path: '/ws' });
   wss.on('error', () => {}); // erros de porta já chegam pelo servidor HTTP
 
@@ -67,7 +68,7 @@ export async function criarServidor({
     return item?.tipo === 'site' ? item : null;
   };
   const telaDoTelao = () => [...wss.clients].find((c) => c.papel === 'telao' && c.tela)?.tela;
-  const pacote = () => JSON.stringify({ tipo: 'estado', estado, itens, controles: controles(), site: siteNoAr(estado) ? modoSite : null });
+  const pacote = () => JSON.stringify({ tipo: 'estado', inicio, estado, itens, controles: controles(), site: siteNoAr(estado) ? modoSite : null });
   const transmitir = () => {
     const msg = pacote();
     for (const cliente of wss.clients) if (cliente.readyState === 1) cliente.send(msg);
@@ -198,6 +199,13 @@ export async function criarServidor({
     if (novo !== estado) mudarEstado(novo);
     else transmitir();
     return { copia };
+  }));
+
+  // Muda a ordem dos slides de uma apresentação (arrastar no celular).
+  app.post('/api/itens/:id/ordem', rota(async (req) => {
+    const item = await biblioteca.reordenarSlides(req.params.id, req.body?.ordem);
+    await recarregar();
+    return { item };
   }));
 
   // Abre a janela das pastas dos dias no computador (Explorador de Arquivos / Finder).

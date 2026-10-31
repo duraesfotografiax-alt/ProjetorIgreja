@@ -96,6 +96,21 @@ test('copia alguns slides para uma apresentação nova, sem mexer na original', 
   await assert.rejects(bib.copiarSlides(original.id, []), /pelo menos um/);
 }));
 
+test('muda a ordem dos slides e recusa ordem inválida', () => comPasta(async (pasta) => {
+  const bib = new Biblioteca(pasta);
+  const arquivos = [];
+  for (const nome of ['1.png', '2.png', '3.png']) {
+    const caminho = path.join(pasta, `tmp-${nome}`);
+    await writeFile(caminho, nome);
+    arquivos.push({ nomeOriginal: nome, caminho });
+  }
+  const [original] = await bib.adicionar(arquivos);
+  const nova = await bib.reordenarSlides(original.id, [2, 0, 1]);
+  assert.deepEqual(nova.slides, ['003.png', '001.png', '002.png']);
+  assert.deepEqual((await bib.listar())[0].slides, ['003.png', '001.png', '002.png']);
+  for (const ruim of [[0, 1], [0, 0, 1], [0, 1, 5], 'abc', undefined]) await assert.rejects(bib.reordenarSlides(original.id, ruim), /inválida/);
+}));
+
 test('copiar arquivos (pastas dos dias) mantém o original', () => comPasta(async (pasta) => {
   const bib = new Biblioteca(path.join(pasta, 'bib'));
   const original = path.join(pasta, 'clipe.mp4');

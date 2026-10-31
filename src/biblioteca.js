@@ -188,6 +188,23 @@ export class Biblioteca {
     return this.#criar('site', titulo, async () => ({ link }), { nome: titulo });
   }
 
+  // Muda a ordem dos slides. ordem = posições atuais na ordem nova, ex.: [2, 0, 1].
+  // Só reescreve a lista no info.json; as imagens não saem do lugar.
+  async reordenarSlides(id, ordem) {
+    if (!idValido(id)) throw new Error('Id inválido.');
+    const arquivo = path.join(this.pasta, id, 'info.json');
+    const item = JSON.parse(await readFile(arquivo, 'utf8'));
+    if ((item.tipo ?? 'slides') !== 'slides') throw new Error('Só dá para organizar slides.');
+    const posicoes = Array.isArray(ordem) ? ordem.map(Number) : [];
+    const completa = posicoes.length === item.slides.length
+      && new Set(posicoes).size === posicoes.length
+      && posicoes.every((i) => Number.isInteger(i) && i >= 0 && i < item.slides.length);
+    if (!completa) throw new Error('Ordem inválida.');
+    item.slides = posicoes.map((i) => item.slides[i]);
+    await writeFile(arquivo, JSON.stringify(item, null, 2));
+    return item;
+  }
+
   async remover(id) {
     if (!idValido(id)) throw new Error('Id inválido.');
     await rm(path.join(this.pasta, id), { recursive: true, force: true });

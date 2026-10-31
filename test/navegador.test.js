@@ -23,7 +23,8 @@ const navegador = achar();
 const pagina = '<title>Site de teste</title><video id=v loop></video><iframe srcdoc="<audio id=a></audio>"></iframe>';
 
 test('procurarNavegador respeita PROJETOR_NAVEGADOR e não inventa caminho', () => {
-  assert.equal(procurarNavegador({ PROJETOR_NAVEGADOR: '/nao/existe' }, 'linux'), null);
+  // 'win32' sem pastas de programas: não há onde procurar, então não inventa caminho (não depende do que está instalado aqui).
+  assert.equal(procurarNavegador({ PROJETOR_NAVEGADOR: '/nao/existe' }, 'win32'), null);
   assert.equal(procurarNavegador({ PROJETOR_NAVEGADOR: process.execPath }, 'linux'), process.execPath);
 });
 

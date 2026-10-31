@@ -70,6 +70,10 @@ Coloque o arquivo na pasta do dia (PDF, imagens, vídeo, áudio). Em poucos segu
 
 **Fundo da tela**: quando nada está no ar, o telão mostra um fundo azul. Para trocar, coloque uma imagem em `9 - Fundo da tela` (vale a mais recente).
 
+## Organizar a ordem dos slides
+
+No celular, abra a apresentação (aba Dias ou Mídia) e toque em **Organizar a ordem dos slides**. Aperte e segure um slide até ele levantar, arraste para onde quiser e toque em **Pronto**. Perto da borda a lista rola sozinha.
+
 ## Bíblia
 
 O programa **não traz texto bíblico**: ele lê o arquivo da versão que a igreja tem permissão de usar (ARC, NVI, NTLH…).
@@ -77,6 +81,12 @@ O programa **não traz texto bíblico**: ele lê o arquivo da versão que a igre
 1. Coloque o arquivo em `Pastas do Projetor/8 - Bíblias` (o nome do arquivo vira o nome da versão, ex.: `ARC.csv`), **ou** na aba Bíblia do celular, menu ⋯ → *Enviar arquivo da Bíblia*.
 2. Formatos aceitos: CSV (`livro;capitulo;versiculo;texto`), JSON, XML (Zefania) e TXT.
 3. Na aba Bíblia escolha livro, capítulo e toque no versículo: ele aparece no telão com a referência em dourado. *Avançar/Voltar* passam os versículos. Também dá para digitar "jo 3:16" ou uma palavra.
+
+## Não precisar ler o QR toda hora
+
+- **Depois de atualizar o programa:** o app do celular se recarrega sozinho quando o computador volta. Não precisa ler o QR nem abrir de novo.
+- **O que faz o endereço mudar:** o roteador pode dar um número novo ao computador. Para isso nunca acontecer, entre no roteador e crie uma **reserva de IP** (às vezes chamada "DHCP estático") para o computador do som. Faça uma vez só.
+- **Enquanto isso:** se o celular ficar sem conexão por alguns segundos, o app mostra um aviso com o botão **Tentar pelo nome do computador**, que funciona mesmo que o número tenha mudado (principalmente no iPhone).
 
 ## Salvar e atualizar
 

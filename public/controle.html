@@ -130,6 +130,10 @@
     .mini.atual { border-color: var(--laranja); }
     .mini.marcado { border-color: var(--ok); }
     .mini.marcado::after { content: '✓'; position: absolute; top: 3px; left: 4px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: var(--ok); color: #04150e; font-size: 13px; font-weight: 800; }
+    .organizar .mini { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
+    .organizar .mini img { pointer-events: none; }
+    .organizar .mini.levantado { border-color: var(--laranja); transform: scale(1.08); box-shadow: 0 10px 28px rgba(0, 0, 0, .7); z-index: 2; touch-action: none; }
+    .organizar .mini.segurando { border-color: var(--ouro); }
     .mini img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .mini span { position: absolute; right: 5px; bottom: 3px; font-size: 12px; font-weight: 800; text-shadow: 0 0 4px #000; }
     .estrofe { display: block; width: 100%; text-align: left; white-space: pre-line; padding: 12px 14px; background: var(--c2); border: 2px solid transparent; border-radius: 12px; margin-bottom: 8px; font-size: 16px; }
@@ -175,6 +179,12 @@
       background: var(--texto); color: var(--fundo); border-radius: 14px; padding: 12px 16px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
     .aviso.erro { background: var(--vivo); color: #fff; }
     .aviso i { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: var(--laranja); }
+
+    .sem-con { position: fixed; left: 12px; right: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 30; padding: 12px 14px; border-radius: 16px;
+      background: var(--c2); border: 1px solid var(--linha); display: grid; gap: 4px; font-size: 14px; color: var(--suave); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+    .sem-con b { color: var(--texto); font-size: 15px; }
+    .sem-con a { color: var(--ouro); font-weight: 700; text-decoration: underline; padding: 6px 0; }
+    .sem-con[hidden] { display: none; }
 
     /* ---------- Folha (menus e formulários que sobem de baixo) ---------- */
     dialog#folha { border: 0; padding: 0; background: var(--c1); color: var(--texto); width: 100%; max-width: 640px; max-height: 92dvh;
@@ -289,6 +299,12 @@
 
 <div class="aviso" id="aviso" role="status" hidden></div>
 
+<div class="sem-con" id="semCon" hidden>
+  <b>Sem conexão com o computador</b>
+  <span>Confira se o celular está no mesmo Wi-Fi. Tentando de novo sozinho…</span>
+  <a id="semConNome" hidden>Tentar pelo nome do computador</a>
+</div>
+
 <dialog id="folha">
   <div class="folha-in">
     <div class="folha-topo"><h3 id="folhaTitulo"></h3><button class="fechar" id="folhaFechar" aria-label="Fechar">✕</button></div>
@@ -373,10 +389,23 @@
       atualizarConectar?.();
     },
     aoMudarConexao(on) {
+      clearTimeout(timerSemCon);
+      if (on) $('semCon').hidden = true;
+      else timerSemCon = setTimeout(() => { $('semCon').hidden = false; }, 6000);
       $('status').classList.toggle('on', on);
       $('status').setAttribute('aria-label', on ? 'Conectado' : 'Sem conexão');
     },
   });
+
+  // Guarda os endereços do computador: se o número do Wi-Fi mudar, o app oferece o endereço pelo nome.
+  let timerSemCon;
+  try {
+    fetch('/api/conexao').then((r) => r.json()).then(({ url, urlNome }) => {
+      localStorage.setItem('enderecos', JSON.stringify({ url, urlNome }));
+    }).catch(() => {});
+    const { urlNome } = JSON.parse(localStorage.getItem('enderecos') ?? '{}');
+    if (urlNome && !location.href.startsWith(urlNome)) { $('semConNome').href = urlNome + 'controle.html'; $('semConNome').hidden = false; }
+  } catch { /* sem armazenamento: só não mostra o atalho */ }
 
   // ---------- Mensagens ----------
   let timerAviso;
@@ -540,6 +569,7 @@
       const atual = (i) => noAr && estado.atual.slide === i ? ' atual' : '';
       const caixa = h('div', { class: 'partes' });
       if (item.tipo === 'slides') {
+        if (item.slides.length > 1) caixa.append(h('button', { class: 'link-pastas', style: 'margin:0 0 10px;height:44px', type: 'button', texto: '↕️ Organizar a ordem dos slides', onclick: () => organizarSlides(item) }));
         caixa.append(h('div', { class: 'miniaturas' }, item.slides.map((_, i) =>
           h('button', { class: 'mini' + atual(i), type: 'button', 'aria-label': `Slide ${i + 1}`, onclick: () => ws({ acao: 'abrir', id: item.id, slide: i, dia }) },
             h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy' }), h('span', { texto: i + 1 })))));
@@ -661,6 +691,7 @@
     }));
     opcoes.push(h('div', { style: 'margin:6px 0 14px' }, h('span', { class: 'rotulo', texto: 'Mostrar nos dias' }), chips));
 
+    if (item.tipo === 'slides' && item.slides.length > 1) opcoes.push(opcao('↕️', 'Organizar a ordem dos slides', 'Aperte, segure e arraste', () => organizarSlides(item)));
     if (item.tipo === 'slides' && item.slides.length > 1) opcoes.push(opcao('⧉', 'Copiar alguns slides para outros dias', 'Escolha só os slides que quiser', () => copiarSlides(item)));
     if (item.tipo === 'musica') opcoes.push(opcao('✏️', 'Editar a letra', null, () => editorMusica(item)));
     if (item.tipo === 'site') opcoes.push(opcao('🔁', 'Abrir a página de novo no computador', null, async () => {
@@ -689,6 +720,83 @@
       setTimeout(() => { armado = false; limpar.querySelector('span:last-child').firstChild.textContent = 'Limpar o dia'; }, 3500);
     };
   };
+
+  // ---------- Organizar slides: aperta e segura, depois arrasta para a nova posição ----------
+  function organizarSlides(item) {
+    const SEGURAR_MS = 350;
+    const MOVE_MAX = 10;
+    const ordem = item.slides.map((_, i) => i); // ordem[nova posição] = posição original
+    let mudou = false;
+    const grade = h('div', { class: 'miniaturas organizar' });
+    const numerar = () => [...grade.children].forEach((el, n) => { el.querySelector('span').textContent = n + 1; });
+    for (const i of ordem) {
+      grade.append(h('div', { class: 'mini', 'data-i': i, 'aria-label': `Slide ${i + 1}` },
+        h('img', { src: urlSlide(item, i), alt: '', loading: 'lazy', draggable: 'false' }), h('span', { texto: i + 1 })));
+    }
+    const botaoSalvar = h('button', { class: 'botao', type: 'button', texto: 'Pronto' });
+
+    let alvo = null; let timer = null; let ponteiro = null; let inicio = null; let rolagem = null;
+    const parar = () => {
+      clearTimeout(timer); clearInterval(rolagem);
+      alvo?.classList.remove('segurando', 'levantado');
+      alvo = ponteiro = inicio = null;
+    };
+    const levantar = () => { if (alvo) { alvo.classList.remove('segurando'); alvo.classList.add('levantado'); navigator.vibrate?.(25); } };
+    let ultimo = { x: 0, y: 0 };
+
+    grade.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest('.mini');
+      if (!el || alvo) return;
+      alvo = el; ponteiro = e.pointerId; inicio = { x: e.clientX, y: e.clientY }; ultimo = inicio;
+      el.classList.add('segurando');
+      timer = setTimeout(levantar, SEGURAR_MS);
+    });
+    grade.addEventListener('pointermove', (e) => {
+      if (!alvo || e.pointerId !== ponteiro) return;
+      ultimo = { x: e.clientX, y: e.clientY };
+      if (!alvo.classList.contains('levantado')) {
+        // Mexeu antes de segurar: é rolagem da lista, não arrasto.
+        if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > MOVE_MAX) parar();
+        return;
+      }
+      if (!rolagem) rolagem = setInterval(rolarSePerto, 30);
+      const sobre = document.elementFromPoint(e.clientX, e.clientY)?.closest('.mini');
+      if (sobre && sobre !== alvo && grade.contains(sobre)) {
+        const filhos = [...grade.children];
+        const de = filhos.indexOf(alvo); const para = filhos.indexOf(sobre);
+        grade.insertBefore(alvo, para > de ? sobre.nextSibling : sobre);
+        numerar(); mudou = true;
+      }
+    });
+    // Depois de levantar, o dedo move o slide e não a tela.
+    grade.addEventListener('touchmove', (e) => { if (alvo?.classList.contains('levantado') && e.cancelable) e.preventDefault(); }, { passive: false });
+    grade.addEventListener('contextmenu', (e) => e.preventDefault());
+    for (const tipo of ['pointerup', 'pointercancel']) grade.addEventListener(tipo, (e) => { if (e.pointerId === ponteiro) parar(); });
+
+    // Perto da borda de cima ou de baixo, a lista rola sozinha enquanto arrasta.
+    function rolarSePerto() {
+      if (!alvo?.classList.contains('levantado')) return;
+      const limites = folha.getBoundingClientRect();
+      const borda = 70;
+      if (ultimo.y < limites.top + borda) folha.scrollTop -= 14;
+      else if (ultimo.y > limites.bottom - borda) folha.scrollTop += 14;
+    }
+
+    botaoSalvar.onclick = async () => {
+      const nova = [...grade.children].map((el) => Number(el.dataset.i));
+      if (!mudou) { fecharFolha(); return; }
+      botaoSalvar.disabled = true;
+      const resposta = await fetch(`/api/itens/${item.id}/ordem`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordem: nova }),
+      }).catch(() => null);
+      const dados = await resposta?.json().catch(() => ({}));
+      if (!resposta?.ok) { aviso(dados?.erro || 'Não foi possível salvar a ordem.', { erro: true }); botaoSalvar.disabled = false; return; }
+      fecharFolha(); aviso('Ordem salva.');
+    };
+    abrirFolha('Organizar slides',
+      h('p', { class: 'nota', style: 'margin:0 0 12px', texto: 'Aperte e segure um slide até ele levantar, depois arraste para onde quiser.' }), grade,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }), botaoSalvar));
+  }
 
   // ---------- Copiar slides para outros dias ----------
   function copiarSlides(item) {
