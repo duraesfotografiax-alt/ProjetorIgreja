@@ -883,7 +883,11 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordem: nova }),
       }).catch(() => null);
       const dados = await resposta?.json().catch(() => ({}));
-      if (!resposta?.ok) { aviso(dados?.erro || 'Não foi possível salvar a ordem.', { erro: true }); botaoSalvar.disabled = false; return; }
+      if (!resposta?.ok) {
+        const antigo = resposta?.status === 404; // o programa no computador não foi reiniciado depois de atualizar
+        aviso(dados?.erro || (antigo ? 'O programa no computador está na versão antiga: feche a janela preta dele e abra de novo.' : 'Não foi possível salvar a ordem.'), { erro: true, ms: 9000 });
+        botaoSalvar.disabled = false; return;
+      }
       fecharFolha(); aviso('Ordem salva.');
     };
     abrirFolha('Organizar slides',
