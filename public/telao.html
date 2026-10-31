@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telão Durães</title>
+  <link rel="icon" type="image/png" href="/icones/icone-192.png">
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+    .camada {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      object-fit: contain; opacity: 0; transition: opacity .35s ease;
+    }
+    .visivel { opacity: 1; }
+    video.camada { background: #000; }
+    #yt { background: #000; pointer-events: none; }
+    #yt iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* Letra de música: texto branco grande sobre fundo escuro */
+    #letra {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
+      background: radial-gradient(ellipse at center, #1d2a4a 0%, #0b0f1c 75%);
+      opacity: 0; transition: opacity .35s ease;
+    }
+    #letra.visivel { opacity: 1; }
+    /* Bíblia: a referência (João 3:16 · ARC) aparece embaixo do versículo */
+    #referencia { color: #f3b757; font: 600 4.4vh/1.2 system-ui, 'Segoe UI', Roboto, sans-serif; letter-spacing: .04em; transition: opacity .25s ease; }
+    #referencia:empty { display: none; }
+    #texto {
+      width: 88vw; color: #fff; text-align: center; white-space: pre-line;
+      font: 700 8vh/1.25 system-ui, 'Segoe UI', Roboto, sans-serif;
+      text-shadow: 0 .04em .12em rgba(0, 0, 0, .8); transition: opacity .25s ease;
+    }
+
+    #preta { position: fixed; inset: 0; background: #000; opacity: 0; transition: opacity .35s; pointer-events: none; }
+    #preta.ligada { opacity: 1; }
+    /* Fundo da tela: aparece quando nada está sendo transmitido (imagem da pasta "9 - Fundo da tela") */
+    #fundo {
+      position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 40%, #16306e 0%, #0a1638 55%, #040917 100%)
+        center / cover no-repeat;
+      transition: opacity .6s ease;
+    }
+    #fundo.escondido { opacity: 0; }
+    /* Conectar: cartão pequeno no canto, só enquanto nenhum celular está conectado (ou tecla Q) */
+    #conectar {
+      position: fixed; right: 2vw; bottom: 2vw; display: flex; align-items: center; gap: 14px; cursor: default;
+      background: rgba(0, 0, 0, .55); color: #ddd; font: 500 15px/1.35 system-ui, sans-serif;
+      padding: 12px 16px 12px 12px; border-radius: 14px; backdrop-filter: blur(6px);
+    }
+    #conectar[hidden] { display: none; }
+    #conectar img { width: 110px; height: 110px; border-radius: 8px; background: #fff; padding: 5px; }
+    #conectar small { display: block; color: #999; font-size: 13px; margin-top: 4px; }
+    #aviso { cursor: pointer; text-decoration: underline; }
+    #som {
+      position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, .7); color: #fff; cursor: pointer;
+      font: 600 16px system-ui, sans-serif; padding: 10px 14px; border-radius: 10px;
+    }
+    #som[hidden] { display: none; }
+    /* Tela do computador: vídeo da aba/janela compartilhada; botão para escolher qual */
+    #tela { background: #000; }
+    #escolherTela { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; cursor: pointer;
+      background: rgba(0, 0, 0, .75); color: #fff; border: 2px solid rgba(255, 255, 255, .35); border-radius: 16px;
+      font: 600 22px/1.4 system-ui, sans-serif; padding: 22px 28px; text-align: center; max-width: 80vw; }
+    #escolherTela small { display: block; font-weight: 400; font-size: 15px; opacity: .75; margin-top: 8px; }
+    #escolherTela[hidden] { display: none; }
+    /* Áudio: o fundo da tela continua aparecendo, com o nome da faixa bem discreto */
+    #legenda { position: fixed; left: 2vw; bottom: 2vw; color: rgba(255, 255, 255, .7); font: 500 18px system-ui, sans-serif;
+      background: rgba(0, 0, 0, .35); padding: 8px 14px; border-radius: 10px; }
+    #legenda[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="fundo"></div>
+  <img id="a" class="camada" alt="">
+  <img id="b" class="camada" alt="">
+  <div id="letra"><div id="texto"></div><div id="referencia"></div></div>
+  <video id="video" class="camada" playsinline preload="auto"></video>
+  <audio id="audio" preload="auto"></audio>
+  <video id="tela" class="camada" playsinline autoplay></video>
+  <button id="escolherTela" hidden></button>
+  <div id="legenda" hidden></div>
+  <div id="yt" class="camada"></div>
+  <div id="preta"></div>
+
+  <div id="conectar" hidden>
+    <img id="qrcode" alt="QR code para conectar o celular">
+    <div>Aponte a câmera do celular<br>para controlar o telão
+      <small id="url"></small>
+      <small id="aviso">Tela cheia: clique aqui ou F11 · Q mostra/esconde</small>
+    </div>
+  </div>
+  <div id="som" hidden>🔇 Clique aqui para liberar o som do vídeo</div>
+
+  <script type="module">
+    import { conectar, urlSlide, urlVideo } from '/conexao.js';
+
+    const $ = (id) => document.getElementById(id);
+    const camadas = [$('a'), $('b')];
+    const video = $('video');
+    let frente = 0;
+    let srcAtual = null;
+    let ultimo = { estado: null, itens: [] };
+    let reinicioVisto = null;
+
+    fetch('/api/conexao').then((r) => r.json()).then(({ url, qrcode }) => {
+      $('qrcode').src = qrcode;
+      $('url').textContent = url;
+    });
+
+    // Fundo da tela: confere de vez em quando se colocaram uma imagem nova na pasta.
+    let fundoAtual = null;
+    async function carregarFundo() {
+      try {
+        const { url } = await (await fetch('/api/fundo')).json();
+        if (url === fundoAtual) return;
+        fundoAtual = url;
+        $('fundo').style.backgroundImage = url ? `url("${url}")` : '';
+      } catch {}
+    }
+    carregarFundo();
+    setInterval(carregarFundo, 15000);
+    let qrForcado = false; // tecla Q
+
+    // Slides: troca com transição suave, carrega por trás e depois mostra.
+    function mostrarImagem(src) {
+      if (src === srcAtual) return;
+      srcAtual = src;
+      if (!src) { camadas.forEach((c) => c.classList.remove('visivel')); return; }
+      const tras = camadas[1 - frente];
+      tras.onload = () => {
+        if (srcAtual !== src) return;
+        tras.classList.add('visivel');
+        camadas[frente].classList.remove('visivel');
+        frente = 1 - frente;
+      };
+      tras.src = src;
+    }
+
+    // Letra: diminui a fonte até a estrofe caber na tela.
+    function mostrarLetra(texto, referencia = '') {
+      const caixa = $('letra');
+      caixa.classList.toggle('visivel', texto !== null);
+      const chave = `${referencia}|${texto}`;
+      if (texto === null || $('texto').dataset.chave === chave) return;
+      const el = $('texto');
+      const ref = $('referencia');
+      el.style.opacity = 0; ref.style.opacity = 0;
+      setTimeout(() => {
+        el.dataset.chave = chave;
+        el.textContent = texto;
+        ref.textContent = referencia;
+        // Diminui a letra até o texto caber na tela (com a referência embaixo, sobra menos altura).
+        const altura = innerHeight * (referencia ? 0.68 : 0.84);
+        let tamanho = 9;
+        el.style.fontSize = `${tamanho}vh`;
+        while (tamanho > 2.5 && (el.scrollHeight > altura || el.scrollWidth > el.clientWidth)) {
+          tamanho -= 0.5;
+          el.style.fontSize = `${tamanho}vh`;
+        }
+        el.style.opacity = 1; ref.style.opacity = 1;
+      }, 200);
+    }
+
+    // Vídeo: segue o estado (tocar, pausar, reiniciar, volume).
+    function controlarVideo(src, estado) {
+      if (!src) {
+        video.classList.remove('visivel');
+        video.pause();
+        if (video.getAttribute('src')) { video.removeAttribute('src'); video.load(); }
+        return;
+      }
+      video.classList.add('visivel');
+      if (video.getAttribute('src') !== src) { video.src = src; reinicioVisto = null; }
+      if (reinicioVisto !== estado.video.reinicio) { video.currentTime = 0; reinicioVisto = estado.video.reinicio; }
+      video.volume = estado.volume;
+      if (estado.video.tocando) {
+        video.muted = false;
+        video.play().catch(() => {
+          // O navegador bloqueia som antes de alguém clicar na página: toca sem som e avisa.
+          video.muted = true;
+          video.play().catch(() => {});
+          $('som').hidden = false;
+        });
+      } else {
+        video.pause();
+      }
+    }
+
+    // Áudio: toca pelo computador; tocar, pausar, reiniciar e volume vêm do celular.
+    const audio = $('audio');
+    let audioReinicio = null;
+    function controlarAudio(item, estado) {
+      const legenda = $('legenda');
+      if (!item) {
+        legenda.hidden = true;
+        audio.pause();
+        if (audio.getAttribute('src')) { audio.removeAttribute('src'); audio.load(); }
+        return;
+      }
+      legenda.hidden = false;
+      legenda.textContent = `♪ ${item.nome}`;
+      const src = urlVideo(item);
+      if (audio.getAttribute('src') !== src) { audio.src = src; audioReinicio = null; }
+      if (audioReinicio !== estado.video.reinicio) { audio.currentTime = 0; audioReinicio = estado.video.reinicio; }
+      audio.volume = estado.volume;
+      if (estado.video.tocando) {
+        // O navegador pode bloquear o som antes de alguém clicar na página: mostra o aviso para liberar.
+        audio.play().catch(() => { $('som').hidden = false; });
+      } else {
+        audio.pause();
+      }
+    }
+    audio.onended = () => enviar({ acao: 'video', comando: 'pausar' });
+
+    // ---------- Tela do computador: mostra uma aba ou janela escolhida (ex.: um site de transmissão) ----------
+    // O navegador exige que alguém escolha a aba/janela uma vez, clicando aqui no telão.
+    const tela = $('tela');
+    let fluxoTela = null;
+    function controlarTela(item, estado) {
+      const botao = $('escolherTela');
+      if (!item) { tela.classList.remove('visivel'); botao.hidden = true; return; }
+      if (fluxoTela?.active) {
+        botao.hidden = true;
+        tela.classList.add('visivel');
+        tela.volume = estado.volume;
+        tela.muted = !estado.video.tocando; // "Silenciar" no celular
+        tela.play().catch(() => {});
+        return;
+      }
+      tela.classList.remove('visivel');
+      botao.hidden = false;
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        botao.innerHTML = '🖥️ Abra o telão pelo endereço http://localhost:8080/telao.html<small>Por segurança, o navegador só libera a captura de tela nesse endereço</small>';
+        return;
+      }
+      botao.textContent = '';
+      botao.append(item.tipo === 'site' ? `🖥️ Clique aqui e escolha a janela de “${item.nome}”` : '🖥️ Clique aqui e escolha a aba ou janela');
+      const dica = document.createElement('small');
+      dica.textContent = item.tipo === 'site'
+        ? 'A página abriu no computador. Escolha a aba dela e marque “Compartilhar áudio da guia”.'
+        : 'No Chrome: “Guia do Chrome” → escolha a aba → marque “Compartilhar áudio da guia”.';
+      botao.append(dica);
+    }
+    $('escolherTela').onclick = async () => {
+      if (!navigator.mediaDevices?.getDisplayMedia) return;
+      try {
+        fluxoTela = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 30 },
+          audio: { suppressLocalAudioPlayback: true }, // o som só sai pelo telão, com o volume do celular
+          selfBrowserSurface: 'exclude',
+          systemAudio: 'include',
+        });
+      } catch { return; } // a pessoa cancelou a escolha
+      tela.srcObject = fluxoTela;
+      fluxoTela.getVideoTracks()[0].addEventListener('ended', () => { fluxoTela = null; tela.srcObject = null; reaplicar(); });
+      reaplicar();
+    };
+    function reaplicar() {
+      const { estado, itens } = ultimo;
+      if (!estado) return;
+      const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
+      controlarTela(precisaCaptura(item) ? item : null, estado);
+    }
+    // 'tela' sempre usa a captura. 'site' só quando o programa não conseguiu abrir a janela em tela cheia.
+    function precisaCaptura(item) {
+      return item?.tipo === 'tela' || (item?.tipo === 'site' && ultimo.site?.modo === 'captura');
+    }
+
+    // ---------- YouTube (vídeo ou ao vivo) com o player oficial ----------
+    let yt = null;          // player do YouTube
+    let ytChave = null;     // vídeo (ou canal ao vivo) carregado agora
+    let ytReinicio = null;
+    let ytApi = null;
+    function apiYoutube() {
+      ytApi ??= new Promise((resolve) => {
+        window.onYouTubeIframeAPIReady = resolve;
+        const s = document.createElement('script');
+        s.src = 'https://www.youtube.com/iframe_api';
+        s.onerror = () => { ytApi = null; };
+        document.head.append(s);
+      });
+      return ytApi;
+    }
+
+    async function controlarYoutube(item, estado) {
+      const caixa = $('yt');
+      if (!item) {
+        caixa.classList.remove('visivel');
+        if (ytChave) { yt?.destroy?.(); yt = null; ytChave = null; caixa.replaceChildren(); }
+        return;
+      }
+      caixa.classList.add('visivel');
+      const chave = item.videoId ?? `canal:${item.canal}`;
+      if (chave !== ytChave) {
+        ytChave = chave;
+        yt?.destroy?.(); yt = null; ytReinicio = estado.video.reinicio;
+        const base = item.videoId
+          ? `https://www.youtube.com/embed/${item.videoId}?`
+          : `https://www.youtube.com/embed/live_stream?channel=${item.canal}&`;
+        const iframe = document.createElement('iframe');
+        iframe.allow = 'autoplay; encrypted-media';
+        iframe.src = `${base}enablejsapi=1&autoplay=1&controls=0&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(location.origin)}`;
+        caixa.replaceChildren(iframe);
+        await apiYoutube();
+        if (ytChave !== chave) return; // trocaram de item enquanto carregava
+        await new Promise((resolve) => {
+          yt = new YT.Player(iframe, {
+            events: {
+              onReady: resolve,
+              onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) enviar({ acao: 'video', comando: 'pausar' }); },
+            },
+          });
+        });
+        if (ytChave !== chave) return;
+      }
+      if (!yt?.getPlayerState) return;
+      if (ytReinicio !== estado.video.reinicio) { ytReinicio = estado.video.reinicio; if (item.videoId) yt.seekTo(0, true); }
+      yt.setVolume(Math.round(estado.volume * 100));
+      if (estado.video.tocando) {
+        yt.unMute();
+        yt.playVideo();
+        // Se o navegador bloquear o som, toca sem som e mostra o aviso para liberar.
+        setTimeout(() => {
+          if (!yt?.getPlayerState || !ultimo.estado?.video.tocando) return;
+          if (![YT.PlayerState.PLAYING, YT.PlayerState.BUFFERING].includes(yt.getPlayerState())) {
+            yt.mute(); yt.playVideo(); $('som').hidden = false;
+          }
+        }, 1500);
+      } else {
+        yt.pauseVideo();
+      }
+    }
+
+    $('som').onclick = () => {
+      $('som').hidden = true;
+      video.muted = false;
+      yt?.unMute?.();
+      if (ultimo.estado?.video.tocando) { video.play().catch(() => {}); audio.play().catch(() => {}); yt?.playVideo?.(); }
+    };
+
+    function preCarregar(item, indice) {
+      if (item?.tipo === 'slides' && indice < item.slides.length) new Image().src = urlSlide(item, indice);
+    }
+
+    // Onde o telão está (monitor), para a janela de um site abrir em tela cheia no mesmo monitor.
+    function medirTela() {
+      return { x: screen.availLeft ?? 0, y: screen.availTop ?? 0, w: screen.width, h: screen.height };
+    }
+
+    const enviar = conectar({
+      papel: 'telao',
+      dadosOla: () => ({ tela: medirTela() }),
+      aoReceberEstado(estado, itens, { controles, site }) {
+        ultimo = { estado, itens, controles, site };
+        const item = estado.atual && itens.find((i) => i.id === estado.atual.id);
+        const slide = estado.atual?.slide ?? 0;
+        $('fundo').classList.toggle('escondido', Boolean(item) && item.tipo !== 'audio');
+        mostrarConectar();
+        $('preta').classList.toggle('ligada', estado.telaPreta);
+        mostrarImagem(item?.tipo === 'slides' ? urlSlide(item, slide) : null);
+        mostrarLetra(item?.tipo === 'musica' ? item.estrofes[slide]
+          : item?.tipo === 'biblia' ? item.versiculos[slide] : null,
+        item?.tipo === 'biblia' ? `${item.livro} ${item.cap}:${slide + 1} · ${item.versao}` : '');
+        controlarVideo(item?.tipo === 'video' ? urlVideo(item) : null, estado);
+        controlarYoutube(item?.tipo === 'youtube' ? item : null, estado);
+        controlarAudio(item?.tipo === 'audio' ? item : null, estado);
+        controlarTela(precisaCaptura(item) ? item : null, estado);
+        preCarregar(item, slide + 1);
+      },
+    });
+
+    let temporizadorTela;
+    const avisarOnde = () => { clearTimeout(temporizadorTela); temporizadorTela = setTimeout(() => enviar({ acao: 'ola', papel: 'telao', tela: medirTela() }), 600); };
+    addEventListener('resize', avisarOnde);
+
+    // Avisa o celular quando o vídeo termina, para o botão voltar a "Tocar".
+    video.onended = () => enviar({ acao: 'video', comando: 'pausar' });
+
+    // Teclado do computador também funciona (setas, espaço, B para tela preta).
+    function mostrarConectar() {
+      const item = ultimo.estado?.atual && ultimo.itens.find((i) => i.id === ultimo.estado.atual.id);
+      $('conectar').hidden = !(qrForcado || ultimo.estado?.qrNoTelao || (!item && !ultimo.controles));
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'q') { qrForcado = !qrForcado; mostrarConectar(); }
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) enviar({ acao: 'proximo' });
+      if (['ArrowLeft', 'PageUp'].includes(e.key)) enviar({ acao: 'anterior' });
+      if (e.key.toLowerCase() === 'b') enviar({ acao: 'telaPreta', ligada: !ultimo.estado?.telaPreta });
+    });
+
+    const aviso = $('aviso');
+    aviso.onclick = () => document.documentElement.requestFullscreen?.();
+    document.addEventListener('fullscreenchange', () => { aviso.hidden = Boolean(document.fullscreenElement); });
+  </script>
+</body>
+</html>
