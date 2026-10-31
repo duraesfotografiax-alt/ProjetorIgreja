@@ -95,8 +95,9 @@ export async function criarServidor({
       if (siteNoAr(estado)?.id !== item.id) { await janelaSite.fechar(); return; } // trocaram de item enquanto abria
       modoSite = { modo: 'janela' };
     } catch (erro) {
-      registrar(`Não foi possível abrir a janela do site (${erro.message}). Abrindo no navegador padrão.`);
-      modoSite = { modo: 'captura' };
+      const motivo = String(erro.message).split('\n')[0].slice(0, 200);
+      registrar(`Não foi possível abrir a janela do site (${motivo}). Abrindo no navegador padrão.`);
+      modoSite = { modo: 'captura', erro: motivo };
       abrirLink(item.link);
     }
     transmitir();

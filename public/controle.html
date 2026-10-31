@@ -525,8 +525,8 @@
       $('dicaTexto').textContent = item.tipo === 'tela' ? '👉 Clique no telão e escolha a aba ou janela que quer mostrar.'
         : !siteModo ? '⏳ Abrindo o site no computador…'
         : siteModo.modo === 'janela' ? '✅ O site está em tela cheia no computador. Se pedir login, entre pelo computador (só na primeira vez).'
-        : '👉 A página abriu no computador. Clique no telão e escolha a janela dela.';
-      $('bReabrir').hidden = item.tipo !== 'site' || !siteModo;
+        : `👉 A página abriu no navegador do computador. Clique no telão e escolha a janela dela.${siteModo.erro ? ` (A tela cheia automática falhou: ${siteModo.erro})` : ''}`;
+      $('bReabrir').hidden = item.tipo !== 'site';
     }
     $('bPreta').classList.toggle('ligado', estado.telaPreta);
     $('bPreta').textContent = estado.telaPreta ? 'Voltar imagem' : 'Tela preta';

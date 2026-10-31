@@ -41,6 +41,7 @@ export class JanelaSite {
         await this.pagina.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch((e) => this.registrar(`Site: ${e.message}`));
       }
       await this.#aplicar();
+      await this.pagina.bringToFront().catch(() => {}); // garante que a janela fica por cima do telão
     });
   }
 
@@ -52,9 +53,10 @@ export class JanelaSite {
       process.getuid?.() === 0 ? '--no-sandbox' : null].filter(Boolean);
     this.navegador = await puppeteer.launch({
       executablePath: this.caminho, headless: this.semJanela, defaultViewport: null, userDataDir: this.perfil,
-      ignoreDefaultArgs: ['--enable-automation'], args,
+      ignoreDefaultArgs: ['--enable-automation'], args, timeout: 20_000,
     });
     this.navegador.on('disconnected', () => this.#zerar());
+    this.registrar(`Janela do site aberta com ${this.caminho}`);
     this.pagina = (await this.navegador.pages())[0] ?? await this.navegador.newPage();
 
     // Tela cheia no monitor do telão (se o telão estiver aberto, usa o monitor dele).

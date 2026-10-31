@@ -281,6 +281,7 @@ test('site em tela cheia: o programa abre a janela, segue volume e silenciar, e 
     celular.send(JSON.stringify({ acao: 'abrir', id: item.id }));
     const plano = await esperarEstado(celular, (m) => m.site?.modo === 'captura');
     assert.equal(plano.site.modo, 'captura');
+    assert.equal(plano.site.erro, 'Chrome travou'); // o celular mostra o motivo
     assert.deepEqual(abertos, ['https://univervideo.com/br']);
   } finally {
     telao.close(); celular.close();
