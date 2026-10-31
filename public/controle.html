@@ -130,6 +130,10 @@
     .mini.atual { border-color: var(--laranja); }
     .mini.marcado { border-color: var(--ok); }
     .mini.marcado::after { content: '✓'; position: absolute; top: 3px; left: 4px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: var(--ok); color: #04150e; font-size: 13px; font-weight: 800; }
+    .reuniao { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 14px; margin-top: 8px; border-left: 4px solid var(--ouro); }
+    .reuniao-nome { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .reuniao-nome b { font-size: 17px; color: var(--ouro); overflow-wrap: anywhere; }
+    .reuniao-nome small { color: var(--suave); font-size: 13px; }
     .organizar .mini { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
     .organizar .mini img { pointer-events: none; }
     .organizar .mini.levantado { border-color: var(--laranja); transform: scale(1.08); box-shadow: 0 10px 28px rgba(0, 0, 0, .7); z-index: 2; touch-action: none; }
@@ -372,6 +376,7 @@
   const abertos = new Map(); // linhas com slides/estrofes abertos (padrão: o item que está no ar)
 
   const buscar = (id) => itens.find((i) => i.id === id);
+  const ehReuniao = (id) => typeof id === 'string' && id.length > 1 && id.startsWith('#');
   const diasDoItem = (item) => DIAS.filter((d) => estado.cultos[d].includes(item.id));
   const partes = (item) => item.tipo === 'musica' ? item.estrofes.length : item.tipo === 'biblia' ? item.versiculos.length : ehMidia(item) ? 1 : item.slides.length;
 
@@ -615,7 +620,11 @@
         : visiveis.length < lista.length ? `${visiveis.length} de ${lista.length} itens`
         : `${lista.length} ${lista.length > 1 ? 'itens' : 'item'}`;
       $('bMenuDia').disabled = false;
-      preencher($('listaDias'), visiveis.map((item) => linha(item, { vista: 'dias' })), h('div', { class: 'vazio-grande' },
+      // Sem filtro, mostra também os títulos das reuniões do dia.
+      const mostrarTitulos = visiveis.length === lista.length;
+      const elementos = (mostrarTitulos ? estado.cultos[diaVisto] : visiveis.map((i) => i.id))
+        .map((id) => ehReuniao(id) ? tituloReuniao(id) : (buscar(id) ? linha(buscar(id), { vista: 'dias' }) : null)).filter(Boolean);
+      preencher($('listaDias'), elementos, h('div', { class: 'vazio-grande' },
         h('p', { texto: `Nada em ${NOME_DIA[diaVisto]} ainda.` }),
         h('button', { class: 'botao', type: 'button', texto: '＋ Adicionar', onclick: () => abrirAdicionar() })));
     }
@@ -662,18 +671,19 @@
 
     if (ctx.vista === 'dias' && pos >= 0) {
       // Sobe e desce em relação aos itens que estão aparecendo (se há filtro de Slides ou Vídeos, passa pelo vizinho do mesmo grupo)
-      const visiveis = lista.map(buscar).filter(Boolean).filter(passaFiltro(filtroDia));
-      const posV = visiveis.findIndex((i) => i.id === item.id);
+      const visiveis = idsVisiveis();
+      const posV = visiveis.indexOf(item.id);
       const mover = (p) => {
         const alvo = visiveis[posV + p];
         const nova = lista.filter((id) => id !== item.id);
-        const k = nova.indexOf(alvo.id);
+        const k = nova.indexOf(alvo);
         nova.splice(p < 0 ? k : k + 1, 0, item.id);
         ws({ acao: 'culto', dia: diaVisto, itens: nova }); fecharFolha();
       };
       opcoes.push(
         opcao('⬆️', 'Subir na lista', null, () => mover(-1), { disabled: posV <= 0 }),
         opcao('⬇️', 'Descer na lista', null, () => mover(1), { disabled: posV < 0 || posV === visiveis.length - 1 }),
+        lista.some(ehReuniao) ? opcao('🗂️', 'Mover para outra reunião', 'Vai para o fim da reunião escolhida', () => moverParaReuniao(item.id)) : null,
         opcao('➖', 'Tirar deste dia', 'O arquivo continua guardado', () => { ws({ acao: 'culto', dia: diaVisto, itens: lista.filter((id) => id !== item.id) }); fecharFolha(); }),
       );
     }
@@ -709,10 +719,12 @@
     const lista = estado.cultos[diaVisto];
     abrirFolha(NOME_DIA[diaVisto],
       h('button', { class: 'opcao', type: 'button', onclick: () => abrirAdicionar() }, h('span', { class: 'ico', texto: '＋' }), h('span', { texto: 'Adicionar neste dia' })),
+      h('button', { class: 'opcao', type: 'button', onclick: () => editorReuniao() }, h('span', { class: 'ico', texto: '🗂️' }),
+        h('span', {}, 'Nova reunião neste dia', h('small', { texto: 'Ex.: Encontro Jovem, FTU, Jejum coletivo' }))),
       h('button', { class: 'opcao', type: 'button', disabled: lista.length === 0 }, h('span', { class: 'ico', texto: '🧹' }),
         h('span', {}, 'Limpar o dia', h('small', { texto: 'Tira todos da lista. Os arquivos continuam guardados.' }))),
     );
-    const limpar = $('folhaCorpo').children[1];
+    const limpar = $('folhaCorpo').children[2];
     let armado = false;
     limpar.onclick = () => {
       if (armado) { ws({ acao: 'culto', dia: diaVisto, itens: [] }); fecharFolha(); return; }
@@ -720,6 +732,87 @@
       setTimeout(() => { armado = false; limpar.querySelector('span:last-child').firstChild.textContent = 'Limpar o dia'; }, 3500);
     };
   };
+
+  // ---------- Reuniões dentro do dia (Sábado: Jejum, FTU, Encontro Jovem…) ----------
+  const nomeReuniao = (id) => id.slice(1);
+  // O que aparece na lista do dia, na ordem: itens e títulos (respeita o filtro Slides/Vídeos/…).
+  function idsVisiveis() {
+    const lista = estado.cultos[diaVisto];
+    const itensDoDia = lista.map(buscar).filter(Boolean);
+    const grupos = GRUPOS.filter((g) => g[0] !== 'todos' && itensDoDia.some(g[2]));
+    if (filtroDia === 'todos' || grupos.length < 2) return lista.filter((id) => ehReuniao(id) || buscar(id));
+    return itensDoDia.filter(passaFiltro(filtroDia)).map((i) => i.id);
+  }
+  const gravarLista = (nova) => ws({ acao: 'culto', dia: diaVisto, itens: nova });
+
+  function tituloReuniao(id) {
+    const lista = estado.cultos[diaVisto];
+    const apos = lista.slice(lista.indexOf(id) + 1);
+    const qtd = (apos.findIndex(ehReuniao) < 0 ? apos : apos.slice(0, apos.findIndex(ehReuniao))).filter(buscar).length;
+    return h('div', { class: 'reuniao' },
+      h('div', { class: 'reuniao-nome' }, h('b', { texto: nomeReuniao(id) }), h('small', { texto: qtd === 1 ? '1 item' : `${qtd} itens` })),
+      h('button', { class: 'mais', type: 'button', 'aria-label': `Opções da reunião ${nomeReuniao(id)}`, onclick: () => menuReuniao(id) }, icone('pontos')));
+  }
+
+  function menuReuniao(id) {
+    const lista = estado.cultos[diaVisto];
+    // A reunião inteira (título + itens) troca de lugar com a reunião vizinha.
+    const blocos = [];
+    for (const x of lista) { if (ehReuniao(x) || blocos.length === 0) blocos.push([x]); else blocos.at(-1).push(x); }
+    const k = blocos.findIndex((bl) => bl[0] === id);
+    const mover = (p) => {
+      [blocos[k], blocos[k + p]] = [blocos[k + p], blocos[k]];
+      gravarLista(blocos.flat()); fecharFolha();
+    };
+    const temAntes = k > 0 && (k > 1 || ehReuniao(blocos[0][0]));
+    const opcao = (ico, texto, dica, acao, extra = {}) => h('button', { class: 'opcao', type: 'button', onclick: acao, ...extra },
+      h('span', { class: 'ico', texto: ico }), h('span', {}, texto, dica ? h('small', { texto: dica }) : null));
+    abrirFolha(nomeReuniao(id),
+      opcao('✏️', 'Mudar o nome', null, () => editorReuniao(id)),
+      opcao('⬆️', 'Subir', 'A reunião inteira sobe', () => mover(-1), { disabled: !temAntes }),
+      opcao('⬇️', 'Descer', null, () => mover(1), { disabled: k < 0 || k === blocos.length - 1 }),
+      opcao('➖', 'Tirar esta reunião', 'Os itens continuam no dia, só some o título', () => { gravarLista(lista.filter((x) => x !== id)); fecharFolha(); }));
+  }
+
+  // Criar (sem id) ou renomear uma reunião do dia.
+  function editorReuniao(id) {
+    const campo = h('input', { class: 'campo', value: id ? nomeReuniao(id) : '', maxlength: 50, autocomplete: 'off', placeholder: 'Nome da reunião' });
+    const erro = h('p', { class: 'erro-texto' });
+    const salvar = () => {
+      const nome = campo.value.trim().replace(/\s+/g, ' ');
+      const lista = estado.cultos[diaVisto];
+      if (!nome) { erro.textContent = 'Escreva o nome da reunião.'; return; }
+      const novoId = '#' + nome;
+      if (novoId !== id && lista.includes(novoId)) { erro.textContent = 'Já existe uma reunião com esse nome neste dia.'; return; }
+      gravarLista(id ? lista.map((x) => (x === id ? novoId : x)) : [...lista, novoId]);
+      fecharFolha();
+    };
+    campo.onkeydown = (e) => { if (e.key === 'Enter') salvar(); };
+    const sugestoes = id ? null : h('div', { class: 'chips', style: 'margin-top:12px' },
+      ['Jejum coletivo', 'FTU', 'Encontro Jovem', 'Entendimento', 'Culto'].map((t) => h('button', { type: 'button', texto: t, onclick: () => { campo.value = t; salvar(); } })));
+    abrirFolha(id ? 'Mudar o nome' : `Nova reunião · ${NOME_DIA[diaVisto]}`,
+      h('p', { class: 'nota', style: 'margin:0 0 10px', texto: 'O título aparece na lista do dia. O que vier depois dele fica nessa reunião.' }),
+      campo, erro, sugestoes,
+      h('div', { class: 'botoes' }, h('button', { class: 'botao sec', type: 'button', texto: 'Cancelar', onclick: fecharFolha }),
+        h('button', { class: 'botao', type: 'button', texto: id ? 'Salvar' : 'Criar', onclick: salvar })));
+    setTimeout(() => campo.focus(), 50);
+  }
+
+  // Põe o item no fim da reunião escolhida (ou no começo do dia, antes de qualquer reunião).
+  function moverParaReuniao(itemId) {
+    const lista = estado.cultos[diaVisto].filter((x) => x !== itemId);
+    const colocar = (aposTitulo) => {
+      const inicio = aposTitulo === null ? 0 : lista.indexOf(aposTitulo) + 1;
+      let fim = inicio;
+      while (fim < lista.length && !ehReuniao(lista[fim])) fim++;
+      lista.splice(fim, 0, itemId);
+      gravarLista(lista); fecharFolha();
+    };
+    const botao = (texto, titulo) => h('button', { class: 'opcao', type: 'button', onclick: () => colocar(titulo) }, h('span', { class: 'ico', texto: '🗂️' }), h('span', { texto }));
+    abrirFolha('Mover para…',
+      lista[0] && !ehReuniao(lista[0]) || !lista.some(ehReuniao) ? botao('Início do dia (sem reunião)', null) : null,
+      ...lista.filter(ehReuniao).map((t) => botao(nomeReuniao(t), t)));
+  }
 
   // ---------- Organizar slides: aperta e segura, depois arrasta para a nova posição ----------
   function organizarSlides(item) {

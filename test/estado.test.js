@@ -176,3 +176,15 @@ test('site (Univer) é mídia: começa a tocar, aceita silenciar e volume', () =
   e = aplicarComando(e, { acao: 'volume', valor: 0.2 }, lista);
   assert.equal(e.volume, 0.2);
 });
+
+test('reuniões do dia: títulos ficam na lista e o avançar pula por cima deles', () => {
+  const lista = ['louvor', '#Encontro Jovem', 'clipe'];
+  let e = aplicarComando(estadoInicial(), { acao: 'culto', dia: 'sab', itens: [...lista, '#', 'x'] }, itens);
+  assert.deepEqual(e.cultos.sab, lista);
+  e = aplicarComando(e, { acao: 'abrir', id: 'louvor', slide: 99, dia: 'sab' }, itens);
+  e = aplicarComando(e, { acao: 'proximo' }, itens);
+  assert.equal(e.atual.id, 'clipe');
+  e = aplicarComando(e, { acao: 'anterior' }, itens);
+  assert.equal(e.atual.id, 'louvor');
+  assert.equal(ajustarAposRemocao(e, itens), e); // títulos não são apagados junto com os itens
+});

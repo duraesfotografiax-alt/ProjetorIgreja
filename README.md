@@ -70,6 +70,14 @@ Coloque o arquivo na pasta do dia (PDF, imagens, vídeo, áudio). Em poucos segu
 
 **Fundo da tela**: quando nada está no ar, o telão mostra um fundo azul. Para trocar, coloque uma imagem em `9 - Fundo da tela` (vale a mais recente).
 
+## Reuniões dentro do dia
+
+Um dia pode ter várias reuniões (ex.: Sábado com Jejum coletivo, FTU e Encontro Jovem). Na aba Dias, toque em ⋯ ao lado do nome do dia → **Nova reunião neste dia**. O título aparece na lista e o que vier depois dele pertence àquela reunião.
+
+- **Mover um item para outra reunião:** ⋯ do item → *Mover para outra reunião*.
+- **Subir/descer a reunião inteira, mudar o nome ou tirar:** ⋯ ao lado do título. Tirar a reunião só apaga o título; os itens continuam no dia.
+- Os itens novos (enviados ou vindos das pastas) entram no fim do dia, na última reunião.
+
 ## Organizar a ordem dos slides
 
 No celular, abra a apresentação (aba Dias ou Mídia) e toque em **Organizar a ordem dos slides**. Aperte e segure um slide até ele levantar, arraste para onde quiser e toque em **Pronto**. Perto da borda a lista rola sozinha.

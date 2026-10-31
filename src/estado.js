@@ -27,6 +27,10 @@ export function estadoInicial(cultos = {}, hoje = diaDaSemana()) {
 }
 
 // Aplica um comando e devolve o novo estado. Comandos inválidos não mudam nada.
+// Numa lista de dia, um texto começando com "#" é o título de uma reunião (ex.: "#Encontro Jovem"):
+// os itens que vêm depois dele, até o próximo título, pertencem a ela.
+export const ehReuniao = (id) => typeof id === 'string' && id.length > 1 && id.length <= 61 && id.startsWith('#');
+
 export function aplicarComando(estado, comando, itens) {
   const buscar = (id) => itens.find((i) => i.id === id);
   const atual = estado.atual && buscar(estado.atual.id);
@@ -51,7 +55,10 @@ export function aplicarComando(estado, comando, itens) {
       // Passou do fim (ou do começo): segue para o item vizinho na lista do dia.
       const lista = estado.atual.dia ? estado.cultos[estado.atual.dia] : [];
       const posicao = lista.indexOf(atual.id);
-      const vizinho = buscar(lista[posicao + passo]);
+      // Pula os títulos de reunião: o vizinho é sempre um item de verdade.
+      let p = posicao + passo;
+      while (ehReuniao(lista[p])) p += passo;
+      const vizinho = buscar(lista[p]);
       if (posicao < 0 || !vizinho || totalPartes(vizinho) === 0) return estado;
       return abrir(estado, vizinho, passo > 0 ? 0 : totalPartes(vizinho) - 1, estado.atual.dia);
     }
@@ -75,7 +82,7 @@ export function aplicarComando(estado, comando, itens) {
     }
     case 'culto': {
       if (!DIAS.includes(comando.dia) || !Array.isArray(comando.itens)) return estado;
-      const lista = [...new Set(comando.itens)].filter((id) => buscar(id));
+      const lista = [...new Set(comando.itens)].filter((id) => buscar(id) || ehReuniao(id));
       return { ...estado, cultos: { ...estado.cultos, [comando.dia]: lista } };
     }
     default:
@@ -104,7 +111,7 @@ function abrir(estado, item, slide, dia) {
 
 // Depois de apagar itens: tira do telão e das listas dos dias o que não existe mais.
 export function ajustarAposRemocao(estado, itens) {
-  const existe = (id) => itens.some((i) => i.id === id);
+  const existe = (id) => ehReuniao(id) || itens.some((i) => i.id === id);
   let mudou = false;
   const cultos = Object.fromEntries(DIAS.map((dia) => {
     const lista = estado.cultos[dia].filter(existe);
